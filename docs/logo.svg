@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
+  <title id="title">Frustracean</title>
+  <desc id="desc">A cartoon crab with a mildly exasperated expression, claws raised, an entropy trace falling across its shell.</desc>
+
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9155"/>
+      <stop offset="55%" stop-color="#F2622B"/>
+      <stop offset="100%" stop-color="#D1481B"/>
+    </linearGradient>
+    <linearGradient id="limb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F87A3C"/>
+      <stop offset="100%" stop-color="#C94A1B"/>
+    </linearGradient>
+    <radialGradient id="gloss" cx="0.34" cy="0.26" r="0.6">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g stroke="#7A2A0E" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- Legs. Short and chunky; long thin ones read as a spider. -->
+    <g fill="none" stroke-width="23">
+      <path d="M162 330 C 130 348 112 372 108 396"/>
+      <path d="M176 356 C 146 380 132 402 130 424"/>
+      <path d="M200 376 C 180 400 172 418 172 438"/>
+      <path d="M350 330 C 382 348 400 372 404 396"/>
+      <path d="M336 356 C 366 380 380 402 382 424"/>
+      <path d="M312 376 C 332 400 340 418 340 438"/>
+    </g>
+
+    <!-- Arms out to the claws. -->
+    <g fill="none" stroke="url(#limb)" stroke-width="34">
+      <path d="M152 272 C 122 254 102 234 92 214"/>
+      <path d="M360 272 C 390 254 410 234 420 214"/>
+    </g>
+
+    <!-- Claws: a heavy palm and two fingers with a real gap, so the pincer
+         still reads when the mark is 16 pixels wide. Drawn once, mirrored. -->
+    <g id="claw" fill="url(#shell)" stroke-width="15">
+      <g transform="translate(430 190) rotate(-26)">
+        <ellipse cx="0" cy="0" rx="54" ry="46"/>
+        <ellipse cx="50" cy="-34" rx="42" ry="20" transform="rotate(-24 50 -34)"/>
+        <ellipse cx="52" cy="20" rx="38" ry="17" transform="rotate(12 52 20)"/>
+      </g>
+    </g>
+    <g fill="url(#shell)" stroke-width="15" transform="translate(512 0) scale(-1 1)">
+      <g transform="translate(430 190) rotate(-26)">
+        <ellipse cx="0" cy="0" rx="54" ry="46"/>
+        <ellipse cx="50" cy="-34" rx="42" ry="20" transform="rotate(-24 50 -34)"/>
+        <ellipse cx="52" cy="20" rx="38" ry="17" transform="rotate(12 52 20)"/>
+      </g>
+    </g>
+
+    <!-- Eye stalks, drawn before the shell so they emerge from behind it. -->
+    <g fill="none" stroke="url(#limb)" stroke-width="26">
+      <path d="M214 226 L 202 170"/>
+      <path d="M298 226 L 310 170"/>
+    </g>
+
+    <!-- Shell. -->
+    <path d="M256 174
+             C 346 174 404 226 404 292
+             C 404 354 340 394 256 394
+             C 172 394 108 354 108 292
+             C 108 226 166 174 256 174 Z"
+          fill="url(#shell)" stroke-width="16"/>
+    <path d="M256 174
+             C 346 174 404 226 404 292
+             C 404 354 340 394 256 394
+             C 172 394 108 354 108 292
+             C 108 226 166 174 256 174 Z"
+          fill="url(#gloss)" stroke="none"/>
+
+    <!-- The shell marking is the whole tool in one glyph: an entropy trace
+         stepping down from opaque on the left to resolved on the right. -->
+    <g stroke="#8E3512" stroke-opacity="0.6" fill="none" stroke-width="11">
+      <path d="M166 306 L 202 306 L 202 328 L 238 328 L 238 318 L 274 318
+               L 274 344 L 310 344 L 310 356 L 346 356"/>
+    </g>
+
+    <!-- Eyes. -->
+    <g stroke-width="13">
+      <circle cx="200" cy="150" r="46" fill="#FFF6EE"/>
+      <circle cx="312" cy="150" r="46" fill="#FFF6EE"/>
+    </g>
+    <g stroke="none">
+      <circle cx="209" cy="158" r="19" fill="#3A1608"/>
+      <circle cx="321" cy="158" r="19" fill="#3A1608"/>
+      <circle cx="200" cy="147" r="7" fill="#FFFFFF" fill-opacity="0.92"/>
+      <circle cx="312" cy="147" r="7" fill="#FFFFFF" fill-opacity="0.92"/>
+    </g>
+
+    <!-- The frustration: brows angled down towards the middle. -->
+    <g fill="none" stroke="#7A2A0E" stroke-width="16">
+      <path d="M158 110 L 228 136"/>
+      <path d="M354 110 L 284 136"/>
+    </g>
+
+    <!-- An unimpressed mouth. -->
+    <path d="M226 252 C 239 241 250 259 262 249 C 273 240 281 253 292 247"
+          fill="none" stroke="#8E3512" stroke-width="12"/>
+  </g>
+</svg>

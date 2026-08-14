@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" width="1200" height="340" role="img" aria-labelledby="btitle bdesc">
+  <title id="btitle">Frustracean</title>
+  <desc id="bdesc">Frustracean: Rust-aware entropy triage and call-hijack planning for malware analysis. A cartoon crab beside the project name, with an entropy trace falling from 7.99 to 4.57 bits per byte.</desc>
+
+  <defs>
+    <linearGradient id="bshell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9155"/>
+      <stop offset="55%" stop-color="#F2622B"/>
+      <stop offset="100%" stop-color="#D1481B"/>
+    </linearGradient>
+    <linearGradient id="blimb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F87A3C"/>
+      <stop offset="100%" stop-color="#C94A1B"/>
+    </linearGradient>
+    <radialGradient id="bgloss" cx="0.34" cy="0.26" r="0.6">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="trace" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F2622B"/>
+      <stop offset="100%" stop-color="#4FB3A7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- The panel is painted explicitly so the banner looks deliberate on both
+       GitHub themes rather than inheriting whatever is behind it. -->
+  <rect x="0" y="0" width="1200" height="340" rx="26" fill="#14181F"/>
+  <rect x="0.75" y="0.75" width="1198.5" height="338.5" rx="25.5" fill="none" stroke="#2A313D" stroke-width="1.5"/>
+
+  <!-- Crab, scaled down from the 512-unit mark. -->
+  <g transform="translate(52 46) scale(0.484)" stroke="#7A2A0E" stroke-linecap="round" stroke-linejoin="round">
+    <g fill="none" stroke-width="23">
+      <path d="M162 330 C 130 348 112 372 108 396"/>
+      <path d="M176 356 C 146 380 132 402 130 424"/>
+      <path d="M200 376 C 180 400 172 418 172 438"/>
+      <path d="M350 330 C 382 348 400 372 404 396"/>
+      <path d="M336 356 C 366 380 380 402 382 424"/>
+      <path d="M312 376 C 332 400 340 418 340 438"/>
+    </g>
+    <g fill="none" stroke="url(#blimb)" stroke-width="34">
+      <path d="M152 272 C 122 254 102 234 92 214"/>
+      <path d="M360 272 C 390 254 410 234 420 214"/>
+    </g>
+    <g fill="url(#bshell)" stroke-width="15">
+      <g transform="translate(430 190) rotate(-26)">
+        <ellipse cx="0" cy="0" rx="54" ry="46"/>
+        <ellipse cx="50" cy="-34" rx="42" ry="20" transform="rotate(-24 50 -34)"/>
+        <ellipse cx="52" cy="20" rx="38" ry="17" transform="rotate(12 52 20)"/>
+      </g>
+    </g>
+    <g fill="url(#bshell)" stroke-width="15" transform="translate(512 0) scale(-1 1)">
+      <g transform="translate(430 190) rotate(-26)">
+        <ellipse cx="0" cy="0" rx="54" ry="46"/>
+        <ellipse cx="50" cy="-34" rx="42" ry="20" transform="rotate(-24 50 -34)"/>
+        <ellipse cx="52" cy="20" rx="38" ry="17" transform="rotate(12 52 20)"/>
+      </g>
+    </g>
+    <g fill="none" stroke="url(#blimb)" stroke-width="26">
+      <path d="M214 226 L 202 170"/>
+      <path d="M298 226 L 310 170"/>
+    </g>
+    <path d="M256 174 C 346 174 404 226 404 292 C 404 354 340 394 256 394
+             C 172 394 108 354 108 292 C 108 226 166 174 256 174 Z"
+          fill="url(#bshell)" stroke-width="16"/>
+    <path d="M256 174 C 346 174 404 226 404 292 C 404 354 340 394 256 394
+             C 172 394 108 354 108 292 C 108 226 166 174 256 174 Z"
+          fill="url(#bgloss)" stroke="none"/>
+    <g stroke="#8E3512" stroke-opacity="0.6" fill="none" stroke-width="11">
+      <path d="M166 306 L 202 306 L 202 328 L 238 328 L 238 318 L 274 318
+               L 274 344 L 310 344 L 310 356 L 346 356"/>
+    </g>
+    <g stroke-width="13">
+      <circle cx="200" cy="150" r="46" fill="#FFF6EE"/>
+      <circle cx="312" cy="150" r="46" fill="#FFF6EE"/>
+    </g>
+    <g stroke="none">
+      <circle cx="209" cy="158" r="19" fill="#3A1608"/>
+      <circle cx="321" cy="158" r="19" fill="#3A1608"/>
+      <circle cx="200" cy="147" r="7" fill="#FFFFFF" fill-opacity="0.92"/>
+      <circle cx="312" cy="147" r="7" fill="#FFFFFF" fill-opacity="0.92"/>
+    </g>
+    <g fill="none" stroke="#7A2A0E" stroke-width="16">
+      <path d="M158 110 L 228 136"/>
+      <path d="M354 110 L 284 136"/>
+    </g>
+    <path d="M226 252 C 239 241 250 259 262 249 C 273 240 281 253 292 247"
+          fill="none" stroke="#8E3512" stroke-width="12"/>
+  </g>
+
+  <!-- Wordmark and tagline. -->
+  <g font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+    <text x="336" y="138" font-size="74" font-weight="800" letter-spacing="2" fill="#FFEDE2">FRUSTRACEAN</text>
+    <text x="340" y="182" font-size="22" font-weight="500" fill="#93A0B0">
+      Rust-aware entropy triage and call-hijack planning for malware analysis
+    </text>
+
+    <!-- The thesis, drawn across the full width: opaque bytes on the left
+         becoming readable ones on the right. Both numbers are the bundled
+         testbed's real measurements, not illustrative ones. -->
+    <g>
+      <text x="340" y="236" font-size="16" font-weight="600" fill="#F2622B">7.99 bits/byte</text>
+      <text x="458" y="236" font-size="16" font-weight="500" fill="#5C6878">encrypted</text>
+      <path d="M344 258 L 444 258 L 444 250 L 544 250 L 544 268 L 644 268
+               L 644 282 L 744 282 L 744 276 L 844 276 L 844 288 L 906 288"
+            fill="none" stroke="url(#trace)" stroke-width="5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="344" cy="258" r="7" fill="#F2622B"/>
+      <circle cx="906" cy="288" r="7" fill="#4FB3A7"/>
+      <text x="930" y="294" font-size="16" font-weight="600" fill="#4FB3A7">4.57</text>
+      <text x="978" y="294" font-size="16" font-weight="500" fill="#5C6878">recovered</text>
+    </g>
+
+    <!-- The pipeline, as one quiet line rather than a stack in the corner. -->
+    <text x="340" y="316" font-size="15" letter-spacing="0.6"
+          font-family="ui-monospace, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace"
+          fill="#4E5A6B">scan &#8594; map &#8594; deps &#8594; plan &#8594; trace &#8594; replay</text>
+  </g>
+</svg>

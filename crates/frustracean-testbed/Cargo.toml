@@ -1,0 +1,39 @@
+[package]
+name = "frustracean-testbed"
+description = "A benign, self-contained sample that unpacks itself, for exercising Frustracean end to end"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+# Built as a cdylib as well as a binary. The two exercise different halves of
+# the planner: the DLL exports named symbols, so rules resolve by `symbol_regex`,
+# while the stripped MSVC executable has no symbol table at all and must be
+# resolved through string cross-references - which is the realistic case for a
+# real sample.
+#
+# The library is named distinctly from the binary on purpose: MSVC derives the
+# PDB name from the crate name with hyphens normalised to underscores, so a lib
+# called `frustracean_testbed` alongside a bin called `frustracean-testbed`
+# collides on `frustracean_testbed.pdb` and cargo warns.
+[lib]
+name = "frustracean_testbed_payload"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "frustracean-testbed"
+path = "src/main.rs"
+
+# No dependencies, deliberately. The testbed must be reproducible from source
+# alone, and its entropy profile must come from its own arithmetic rather than
+# from whatever a crypto crate happens to do this month.
+[dependencies]
+
+[lints]
+workspace = true

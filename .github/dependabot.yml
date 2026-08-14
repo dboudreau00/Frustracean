@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # This tool parses attacker-controlled input through goblin, regex, iced-x86
+  # and serde_yaml. A vulnerability in any of them is a vulnerability here, so
+  # the dependency updates are security-relevant rather than housekeeping.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for routine bumps; anything that needs thought stands alone.
+      patch-and-minor:
+        update-types: [patch, minor]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly

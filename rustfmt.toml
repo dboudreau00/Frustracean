@@ -1,0 +1,7 @@
+# Defaults, with the one setting that matters on a Windows-developed repo.
+#
+# `newline_style = "Unix"` keeps rustfmt from rewriting every line ending when a
+# contributor runs it on a different platform, which would otherwise turn a
+# two-line change into a whole-file diff.
+newline_style = "Unix"
+max_width = 100

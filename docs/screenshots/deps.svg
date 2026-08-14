@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 507 690" width="507" height="690" role="img" aria-label="Terminal output: frustracean deps sample.exe">
+<rect x="0" y="0" width="507" height="690" rx="10" fill="#14181F"/>
+<path d="M0 10 a10 10 0 0 1 10 -10 h487 a10 10 0 0 1 10 10 v22 h-507 z" fill="#1C222C"/>
+<rect x="0.5" y="0.5" width="506" height="689" rx="9.5" fill="none" stroke="#2A313D"/>
+<circle cx="18" cy="16" r="5" fill="#F2666B"/>
+<circle cx="36" cy="16" r="5" fill="#E3B341"/>
+<circle cx="54" cy="16" r="5" fill="#5BC98C"/>
+<text x="253.5" y="21" font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6B7787" text-anchor="middle">frustracean</text>
+<g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
+<text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean deps sample.exe</tspan></text>
+<text x="18" y="100"><tspan fill="#C7D0DC">﻿File: .\target\release\frustracean.exe</tspan></text>
+<text x="18" y="121"><tspan fill="#8FA0B4">Crates:</tspan><tspan fill="#E6EDF5"> 21</tspan></text>
+<text x="18" y="163"><tspan fill="#FFB088" font-weight="600">Recovered dependencies</tspan></text>
+<text x="18" y="184"><tspan fill="#8FA0B4">regex-automata:</tspan><tspan fill="#E6EDF5"> 0.4.18 (registry, 41 reference(s))</tspan></text>
+<text x="18" y="205"><tspan fill="#8FA0B4">aho-corasick:</tspan><tspan fill="#E6EDF5"> 1.1.5 (registry, 20 reference(s))</tspan></text>
+<text x="18" y="226"><tspan fill="#8FA0B4">clap_builder:</tspan><tspan fill="#E6EDF5"> 4.6.6 (registry, 19 reference(s))</tspan></text>
+<text x="18" y="247"><tspan fill="#8FA0B4">goblin:</tspan><tspan fill="#E6EDF5"> 0.9.3 (registry, 15 reference(s))</tspan></text>
+<text x="18" y="268"><tspan fill="#8FA0B4">iced-x86:</tspan><tspan fill="#E6EDF5"> 1.21.0 (registry, 15 reference(s))</tspan></text>
+<text x="18" y="289"><tspan fill="#8FA0B4">memchr:</tspan><tspan fill="#E6EDF5"> 2.8.3 (registry, 10 reference(s))</tspan></text>
+<text x="18" y="310"><tspan fill="#8FA0B4">regex-syntax:</tspan><tspan fill="#E6EDF5"> 0.8.11 (registry, 10 reference(s))</tspan></text>
+<text x="18" y="331"><tspan fill="#8FA0B4">serde_yaml:</tspan><tspan fill="#E6EDF5"> 0.9.34+deprecated (registry, 6 reference(s))</tspan></text>
+<text x="18" y="352"><tspan fill="#8FA0B4">unsafe-libyaml:</tspan><tspan fill="#E6EDF5"> 0.2.11 (registry, 6 reference(s))</tspan></text>
+<text x="18" y="373"><tspan fill="#8FA0B4">anstream:</tspan><tspan fill="#E6EDF5"> 1.0.0 (registry, 3 reference(s))</tspan></text>
+<text x="18" y="394"><tspan fill="#8FA0B4">anstyle-parse:</tspan><tspan fill="#E6EDF5"> 1.0.0 (registry, 3 reference(s))</tspan></text>
+<text x="18" y="415"><tspan fill="#8FA0B4">regex:</tspan><tspan fill="#E6EDF5"> 1.13.1 (registry, 3 reference(s))</tspan></text>
+<text x="18" y="436"><tspan fill="#8FA0B4">serde_core:</tspan><tspan fill="#E6EDF5"> 1.0.229 (registry, 3 reference(s))</tspan></text>
+<text x="18" y="457"><tspan fill="#8FA0B4">serde_json:</tspan><tspan fill="#E6EDF5"> 1.0.151 (registry, 3 reference(s))</tspan></text>
+<text x="18" y="478"><tspan fill="#8FA0B4">clap_lex:</tspan><tspan fill="#E6EDF5"> 1.1.0 (registry, 2 reference(s))</tspan></text>
+<text x="18" y="499"><tspan fill="#8FA0B4">anstyle:</tspan><tspan fill="#E6EDF5"> 1.0.14 (registry, 1 reference(s))</tspan></text>
+<text x="18" y="520"><tspan fill="#8FA0B4">colorchoice:</tspan><tspan fill="#E6EDF5"> 1.0.5 (registry, 1 reference(s))</tspan></text>
+<text x="18" y="541"><tspan fill="#8FA0B4">itoa:</tspan><tspan fill="#E6EDF5"> 1.0.18 (registry, 1 reference(s))</tspan></text>
+<text x="18" y="562"><tspan fill="#8FA0B4">lazy_static:</tspan><tspan fill="#E6EDF5"> 1.5.0 (registry, 1 reference(s))</tspan></text>
+<text x="18" y="583"><tspan fill="#8FA0B4">serde:</tspan><tspan fill="#E6EDF5"> 1.0.229 (registry, 1 reference(s))</tspan></text>
+<text x="18" y="604"><tspan fill="#8FA0B4">strsim:</tspan><tspan fill="#E6EDF5"> 0.11.1 (registry, 1 reference(s))</tspan></text>
+<text x="18" y="646"><tspan fill="#FFB088" font-weight="600">Summary</tspan></text>
+<text x="18" y="667"><tspan fill="#5BC98C" font-weight="600">OK:</tspan><tspan fill="#C7D0DC"> recovered 21 crate reference(s)</tspan></text>
+</g>
+</svg>

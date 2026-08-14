@@ -1,0 +1,70 @@
+name: Bug report
+description: Something the tool got wrong, crashed on, or refused to do
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not attach malware.** If a real sample triggers this, reduce it to
+        a crafted file that reproduces the behaviour, or report privately per
+        [SECURITY.md](../blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, and what it did.
+      placeholder: |
+        $ frustracean plan sample.exe
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - scan / deps (Rust fingerprinting)
+        - map / stats (entropy)
+        - plan (hijack planning)
+        - rules (signature catalogue)
+        - trace (running a sample)
+        - replay (trace correlation)
+        - build or CI
+        - something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Input
+      description: >
+        A crafted file that reproduces it, or the characteristics of the image:
+        format, architecture, whether it is packed, whether it has symbols.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.1.0, or a commit hash"
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and Rust version
+      placeholder: "Windows 11 / rustc 1.96.1"
+    validations:
+      required: true

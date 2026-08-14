@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1002 732" width="1002" height="732" role="img" aria-label="Terminal output: frustracean plan sample.dll --no-xrefs">
+<rect x="0" y="0" width="1002" height="732" rx="10" fill="#14181F"/>
+<path d="M0 10 a10 10 0 0 1 10 -10 h982 a10 10 0 0 1 10 10 v22 h-1002 z" fill="#1C222C"/>
+<rect x="0.5" y="0.5" width="1001" height="731" rx="9.5" fill="none" stroke="#2A313D"/>
+<circle cx="18" cy="16" r="5" fill="#F2666B"/>
+<circle cx="36" cy="16" r="5" fill="#E3B341"/>
+<circle cx="54" cy="16" r="5" fill="#5BC98C"/>
+<text x="501" y="21" font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6B7787" text-anchor="middle">frustracean</text>
+<g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
+<text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean plan sample.dll --no-xrefs</tspan></text>
+<text x="18" y="100"><tspan fill="#C7D0DC">﻿INFO: loaded 19 rule(s) from signatures</tspan></text>
+<text x="18" y="121"><tspan fill="#5FA8D3" font-weight="600">INFO:</tspan><tspan fill="#C7D0DC"> indexing code (linear sweep of executable sections)</tspan></text>
+<text x="18" y="142"><tspan fill="#8FA0B4">frustracean.exe :</tspan><tspan fill="#E6EDF5"> WARNING: 1 instruction(s) failed to decode during the sweep; function recovery in those areas is </tspan></text>
+<text x="18" y="163"><tspan fill="#FFB088" font-weight="600">unreliable</tspan></text>
+<text x="18" y="184"><tspan fill="#C7D0DC">At C:\Users\vmwar\OneDrive\Desktop\Claude\Frustracean\tools\screenshots.ps1:97 char:5</tspan></text>
+<text x="18" y="205"><tspan fill="#C7D0DC">+     &amp; $exe @($shot.args) 2&gt;&amp;1 | Out-File -FilePath $txt -Encoding utf ...</tspan></text>
+<text x="18" y="226"><tspan fill="#C7D0DC">+     ~~~~~~~~~~~~~~~~~~~~~~~~~</tspan></text>
+<text x="18" y="247"><tspan fill="#6B7787">    + CategoryInfo          : NotSpecified: (WARNING: 1 inst...s is unreliable:String) [], RemoteException</tspan></text>
+<text x="18" y="268"><tspan fill="#6B7787">    + FullyQualifiedErrorId : NativeCommandError</tspan></text>
+<text x="18" y="310"><tspan fill="#8FA0B4">File:</tspan><tspan fill="#E6EDF5"> .\target\release\frustracean_testbed_payload.dll</tspan></text>
+<text x="18" y="331"><tspan fill="#8FA0B4">Functions indexed:</tspan><tspan fill="#E6EDF5"> 201</tspan></text>
+<text x="18" y="352"><tspan fill="#8FA0B4">Calling convention:</tspan><tspan fill="#E6EDF5"> win64</tspan></text>
+<text x="18" y="373"><tspan fill="#8FA0B4">Targets:</tspan><tspan fill="#E6EDF5"> 2</tspan></text>
+<text x="18" y="394"><tspan fill="#8FA0B4">Skipped:</tspan><tspan fill="#E6EDF5"> 0</tspan></text>
+<text x="18" y="436"><tspan fill="#FFB088" font-weight="600">Targets</tspan></text>
+<text x="18" y="457"><tspan fill="#8FA0B4">testbed.stage1.decrypt:</tspan><tspan fill="#E6EDF5"> rva 0x1510 (va 0x180001510) | symbol | confidence high | steal 5 bytes, needs relocation</tspan></text>
+<text x="18" y="478"><tspan fill="#6B7787">  symbol: testbed_stage1_decrypt</tspan></text>
+<text x="18" y="499"><tspan fill="#6B7787">  arg key (slice): rcx + length in rdx</tspan></text>
+<text x="18" y="520"><tspan fill="#6B7787">  arg buffer (slice_mut): r8 + length in r9</tspan></text>
+<text x="18" y="541"><tspan fill="#6B7787">  evidence: symbol "testbed_stage1_decrypt" matched rule testbed.stage1.decrypt</tspan></text>
+<text x="18" y="562"><tspan fill="#8FA0B4">testbed.stage2.expand:</tspan><tspan fill="#E6EDF5"> rva 0x1520 (va 0x180001520) | symbol | confidence high | steal 5 bytes, needs relocation</tspan></text>
+<text x="18" y="583"><tspan fill="#6B7787">  symbol: testbed_stage2_expand</tspan></text>
+<text x="18" y="604"><tspan fill="#6B7787">  arg input (slice): rcx + length in rdx</tspan></text>
+<text x="18" y="625"><tspan fill="#6B7787">  arg output (slice_mut): r8 + length in r9</tspan></text>
+<text x="18" y="646"><tspan fill="#6B7787">  evidence: symbol "testbed_stage2_expand" matched rule testbed.stage2.expand</tspan></text>
+<text x="18" y="688"><tspan fill="#FFB088" font-weight="600">Summary</tspan></text>
+<text x="18" y="709"><tspan fill="#5BC98C" font-weight="600">OK:</tspan><tspan fill="#C7D0DC"> 2 target(s) planned, 0 skipped</tspan></text>
+</g>
+</svg>

@@ -1,0 +1,222 @@
+# Symmetric crypto from the RustCrypto ecosystem.
+#
+# These are the functions a Rust sample calls to turn a ciphertext blob into
+# something it can use. Hooking them is the whole point of Frustracean: the
+# sample decrypts its own payload, and we read the buffer on the way out.
+#
+# ---------------------------------------------------------------------------
+# Three caveats that apply to every rule in this file. Read them before trusting
+# a capture.
+#
+# 1. **The Rust ABI is unstable.** These argument models describe how rustc
+#    lowers each signature *in practice* on x86-64: integer and pointer
+#    arguments through the platform C ABI's register sequence, `&[u8]` as two
+#    slots. Nothing guarantees that across compiler versions.
+#
+# 2. **`sret` is calling-convention dependent, and these are written for Win64.**
+#    Win64 returns a value in RAX only when it is 1, 2, 4 or 8 bytes; anything
+#    else gets a hidden out-pointer that consumes the first argument slot.
+#    SysV64 instead returns aggregates up to 16 bytes in RAX:RDX. So a function
+#    returning `Result<Tag, Error>` needs `sret: true` on Windows and
+#    `sret: false` on Linux. The payload is Windows-only today, so the Win64
+#    answer is the one encoded here - check any rule before using it against an
+#    ELF sample.
+#
+# 3. **Generic functions may be inlined away entirely**, leaving nothing to
+#    hook. The string anchors are the fallback, and regexes are written to match
+#    both mangling schemes: v0 renders a generic call as `path::fn::<Args>`,
+#    so patterns end in `(::<|$)` rather than a bare `$`.
+# ---------------------------------------------------------------------------
+
+version: 1
+family: crypto
+
+rules:
+  - id: rust.crypto.aes_gcm.decrypt_in_place_detached
+    description: >
+      AES-GCM authenticated decryption, in place. The buffer argument holds
+      ciphertext on entry and plaintext on return, which is the cleanest
+      entropy transition Frustracean can observe.
+
+      Returns `Result<(), Error>`, which is one byte, so no hidden out-pointer.
+      Contrast the encrypt rule below, which returns a 16-byte tag and does need
+      one - the pair is the clearest illustration of why `sret` cannot be
+      guessed from the function's name.
+    crate: aes-gcm
+    tags: [aead, decrypt, in-place]
+    confidence: high
+    match:
+      demangled_regex: '<aes_gcm::AesGcm<.+> as aead::AeadInPlace>::decrypt_in_place_detached'
+      # A panic site anywhere in the crate embeds its registry path, which is
+      # the only anchor left once symbols are stripped.
+      strings:
+        - "aes-gcm-0.10"
+        - "aes-gcm/src"
+      min_string_hits: 1
+    abi:
+      sret: false
+      args:
+        - {name: this, kind: ptr}
+        - {name: nonce, kind: ptr}
+        - {name: associated_data, kind: slice}
+        - {name: buffer, kind: slice_mut}
+        - {name: tag, kind: ptr}
+    capture:
+      when: both
+      dump: [buffer]
+      expect: entropy_drop
+      max_bytes: 4194304
+
+  - id: rust.crypto.aes_gcm.encrypt_in_place_detached
+    description: >
+      AES-GCM encryption, in place. Catches staging for exfiltration: the
+      plaintext being encrypted is the data the sample decided to steal.
+
+      `sret: true` because this returns `Result<Tag<Self>, Error>` - a 16-byte
+      tag plus a discriminant, far past what Win64 will return in a register.
+      Without the flag every argument below would be read one slot early, and
+      the captured "buffer" would actually be the associated data.
+    crate: aes-gcm
+    tags: [aead, encrypt, exfil]
+    confidence: high
+    match:
+      demangled_regex: '<aes_gcm::AesGcm<.+> as aead::AeadInPlace>::encrypt_in_place_detached'
+    abi:
+      sret: true
+      args:
+        - {name: this, kind: ptr}
+        - {name: nonce, kind: ptr}
+        - {name: associated_data, kind: slice}
+        - {name: buffer, kind: slice_mut}
+    capture:
+      when: both
+      dump: [buffer]
+      expect: entropy_rise
+      max_bytes: 4194304
+
+  - id: rust.crypto.chacha20poly1305.decrypt_in_place_detached
+    description: ChaCha20-Poly1305 authenticated decryption, in place.
+    crate: chacha20poly1305
+    tags: [aead, decrypt, in-place]
+    confidence: high
+    match:
+      demangled_regex: '<chacha20poly1305::ChaChaPoly1305<.+> as aead::AeadInPlace>::decrypt_in_place_detached'
+      strings:
+        - "chacha20poly1305-0.10"
+        - "chacha20poly1305/src"
+      min_string_hits: 1
+    abi:
+      sret: false
+      args:
+        - {name: this, kind: ptr}
+        - {name: nonce, kind: ptr}
+        - {name: associated_data, kind: slice}
+        - {name: buffer, kind: slice_mut}
+        - {name: tag, kind: ptr}
+    capture:
+      when: both
+      dump: [buffer]
+      expect: entropy_drop
+      max_bytes: 4194304
+
+  - id: rust.crypto.stream_cipher.apply_keystream
+    description: >
+      The RustCrypto stream-cipher entry point, shared by chacha20, salsa20,
+      rc4, and the AES CTR/OFB modes. Symmetric, so the direction is not known
+      from the symbol alone - the entropy delta says which way this call went.
+
+      Note the shape of the regex. `apply_keystream` is a *provided* method on
+      the `StreamCipher` trait, not one an implementor writes, so it is
+      monomorphised under the trait's own path - `cipher::stream::StreamCipher::
+      apply_keystream` - and never under the `<T as Trait>::method` form that an
+      overridden method would produce. Anchoring on the latter matches nothing.
+    crate: cipher
+    tags: [stream, symmetric]
+    confidence: medium
+    match:
+      demangled_regex: '^cipher::stream::StreamCipher::apply_keystream(::<|$)'
+    abi:
+      sret: false
+      args:
+        - {name: this, kind: ptr}
+        - {name: buffer, kind: slice_mut}
+    capture:
+      when: both
+      dump: [buffer]
+      expect: any
+      max_bytes: 4194304
+
+  - id: rust.crypto.rc4.apply_keystream
+    description: >
+      RC4. Long dead as real crypto and correspondingly popular as a payload
+      obfuscator, because it is a dozen lines with no key schedule to speak of.
+
+      The generic form here only resolves under v0 mangling, which keeps the
+      instantiated type in the symbol. Under the legacy scheme the type is
+      erased, so the registry-path anchor is the fallback.
+    crate: rc4
+    tags: [stream, symmetric, legacy]
+    confidence: medium
+    match:
+      demangled_regex: '^cipher::stream::StreamCipher::apply_keystream::<rc4::Rc4<'
+      strings:
+        - "rc4-0."
+      min_string_hits: 1
+    abi:
+      sret: false
+      args:
+        - {name: this, kind: ptr}
+        - {name: buffer, kind: slice_mut}
+    capture:
+      when: both
+      dump: [buffer]
+      expect: any
+      max_bytes: 1048576
+
+  - id: rust.crypto.block_mode.decrypt_padded_mut
+    description: >
+      CBC/ECB block-mode decryption with padding, in place. The trait is
+      `cipher::block::BlockDecryptMut`, and the in-place method is
+      `decrypt_padded_mut` - there is no `BlockModeDecrypt::decrypt_padded`.
+
+      Returns `Result<&[u8], UnpadError>`, a fat pointer plus a discriminant, so
+      Win64 passes a hidden out-pointer.
+    crate: cipher
+    tags: [block, decrypt, in-place]
+    confidence: medium
+    match:
+      demangled_regex: '^cipher::block::BlockDecryptMut::decrypt_padded_mut(::<|$)'
+    abi:
+      sret: true
+      args:
+        - {name: this, kind: ptr}
+        - {name: buffer, kind: slice_mut}
+    capture:
+      when: both
+      dump: [buffer]
+      expect: entropy_drop
+      max_bytes: 4194304
+
+  - id: rust.crypto.block_mode.decrypt_padded_b2b_mut
+    description: >
+      The buffer-to-buffer form of the same operation. Kept as a separate rule
+      because its second slice is the *output*, not the buffer being decrypted
+      in place - a single regex covering both forms would dump the wrong one and
+      measure the entropy of an empty buffer against itself.
+    crate: cipher
+    tags: [block, decrypt]
+    confidence: medium
+    match:
+      demangled_regex: '^cipher::block::BlockDecryptMut::decrypt_padded_b2b_mut(::<|$)'
+    abi:
+      sret: true
+      args:
+        - {name: this, kind: ptr}
+        - {name: input, kind: slice}
+        - {name: output, kind: slice_mut}
+    capture:
+      when: both
+      dump: [input, output]
+      expect: entropy_drop
+      compare: {from: input, to: output}
+      max_bytes: 4194304

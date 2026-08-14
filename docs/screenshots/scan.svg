@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 641 816" width="641" height="816" role="img" aria-label="Terminal output: frustracean scan sample.exe">
+<rect x="0" y="0" width="641" height="816" rx="10" fill="#14181F"/>
+<path d="M0 10 a10 10 0 0 1 10 -10 h621 a10 10 0 0 1 10 10 v22 h-641 z" fill="#1C222C"/>
+<rect x="0.5" y="0.5" width="640" height="815" rx="9.5" fill="none" stroke="#2A313D"/>
+<circle cx="18" cy="16" r="5" fill="#F2666B"/>
+<circle cx="36" cy="16" r="5" fill="#E3B341"/>
+<circle cx="54" cy="16" r="5" fill="#5BC98C"/>
+<text x="320.5" y="21" font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6B7787" text-anchor="middle">frustracean</text>
+<g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
+<text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean scan sample.exe</tspan></text>
+<text x="18" y="100"><tspan fill="#C7D0DC">﻿File: .\target\release\frustracean-testbed.exe</tspan></text>
+<text x="18" y="121"><tspan fill="#8FA0B4">SHA256:</tspan><tspan fill="#E6EDF5"> 1b175ba679009d0f59c4f112d8f4d251d54e9f26903e28d0b2f44ecdda9917cf</tspan></text>
+<text x="18" y="142"><tspan fill="#8FA0B4">Size:</tspan><tspan fill="#E6EDF5"> 194.50 KiB (199168 bytes)</tspan></text>
+<text x="18" y="163"><tspan fill="#8FA0B4">Format:</tspan><tspan fill="#E6EDF5"> PE</tspan></text>
+<text x="18" y="184"><tspan fill="#8FA0B4">Architecture:</tspan><tspan fill="#E6EDF5"> x86-64 (64-bit)</tspan></text>
+<text x="18" y="205"><tspan fill="#8FA0B4">Calling convention:</tspan><tspan fill="#E6EDF5"> win64</tspan></text>
+<text x="18" y="226"><tspan fill="#8FA0B4">Image base:</tspan><tspan fill="#E6EDF5"> 0x140000000</tspan></text>
+<text x="18" y="247"><tspan fill="#8FA0B4">Entry point:</tspan><tspan fill="#E6EDF5"> 0x140020170</tspan></text>
+<text x="18" y="268"><tspan fill="#8FA0B4">Sections:</tspan><tspan fill="#E6EDF5"> 5</tspan></text>
+<text x="18" y="289"><tspan fill="#8FA0B4">Symbols:</tspan><tspan fill="#E6EDF5"> 0</tspan></text>
+<text x="18" y="310"><tspan fill="#8FA0B4">Mangled Rust symbols:</tspan><tspan fill="#E6EDF5"> 0</tspan></text>
+<text x="18" y="331"><tspan fill="#8FA0B4">Data entropy:</tspan><tspan fill="#E6EDF5"> 6.28 bits/byte</tspan></text>
+<text x="18" y="373"><tspan fill="#FFB088" font-weight="600">Rust identification</tspan></text>
+<text x="18" y="394"><tspan fill="#8FA0B4">Verdict:</tspan><tspan fill="#E6EDF5"> rust</tspan></text>
+<text x="18" y="415"><tspan fill="#8FA0B4">Score:</tspan><tspan fill="#E6EDF5"> 100 of 100</tspan></text>
+<text x="18" y="436"><tspan fill="#8FA0B4">rustc commit:</tspan><tspan fill="#E6EDF5"> 31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd</tspan></text>
+<text x="18" y="457"><tspan fill="#8FA0B4">Standard library:</tspan><tspan fill="#E6EDF5"> present</tspan></text>
+<text x="18" y="499"><tspan fill="#FFB088" font-weight="600">Markers</tspan></text>
+<text x="18" y="520"><tspan fill="#8FA0B4">rustc_commit_path:</tspan><tspan fill="#E6EDF5"> 37 hit(s), weight 30</tspan></text>
+<text x="18" y="541"><tspan fill="#8FA0B4">std_library_paths:</tspan><tspan fill="#E6EDF5"> 37 hit(s), weight 25</tspan></text>
+<text x="18" y="562"><tspan fill="#8FA0B4">option_unwrap:</tspan><tspan fill="#E6EDF5"> 1 hit(s), weight 15</tspan></text>
+<text x="18" y="583"><tspan fill="#8FA0B4">result_unwrap:</tspan><tspan fill="#E6EDF5"> 2 hit(s), weight 15</tspan></text>
+<text x="18" y="604"><tspan fill="#8FA0B4">index_oob:</tspan><tspan fill="#E6EDF5"> 1 hit(s), weight 12</tspan></text>
+<text x="18" y="625"><tspan fill="#8FA0B4">capacity_overflow:</tspan><tspan fill="#E6EDF5"> 1 hit(s), weight 8</tspan></text>
+<text x="18" y="646"><tspan fill="#8FA0B4">slice_range:</tspan><tspan fill="#E6EDF5"> 1 hit(s), weight 10</tspan></text>
+<text x="18" y="667"><tspan fill="#8FA0B4">backtrace_env:</tspan><tspan fill="#E6EDF5"> 3 hit(s), weight 10</tspan></text>
+<text x="18" y="688"><tspan fill="#8FA0B4">panic_msg:</tspan><tspan fill="#E6EDF5"> 2 hit(s), weight 12</tspan></text>
+<text x="18" y="709"><tspan fill="#8FA0B4">alloc_fail:</tspan><tspan fill="#E6EDF5"> 2 hit(s), weight 8</tspan></text>
+<text x="18" y="730"><tspan fill="#8FA0B4">unwrap_failed:</tspan><tspan fill="#E6EDF5"> 3 hit(s), weight 6</tspan></text>
+<text x="18" y="772"><tspan fill="#FFB088" font-weight="600">Verdict</tspan></text>
+<text x="18" y="793"><tspan fill="#5BC98C" font-weight="600">OK:</tspan><tspan fill="#C7D0DC"> Rust binary with recoverable build metadata</tspan></text>
+</g>
+</svg>

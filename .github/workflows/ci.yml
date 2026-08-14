@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # A warning that nobody sees is a warning that never gets fixed.
+  RUSTFLAGS: "-D warnings"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is the primary target - it is the only platform where the
+        # payload and `trace` are implemented. Linux is here because the static
+        # analysis half is cross-platform and must stay that way, and because
+        # it is the only way to catch Windows-only assumptions leaking into
+        # crates that are supposed to be portable.
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets
+
+      - name: Build
+        run: cargo build --workspace
+
+      - name: Test
+        run: cargo test --workspace
+
+  features:
+    name: feature combinations
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # The payload deliberately does not carry a binary parser, a YAML engine
+      # or a regex engine. That is enforced by a feature split, and a split
+      # nobody checks is a split that quietly stops holding.
+      - name: Core without the analysis feature
+        run: cargo check -p frustracean-core --no-default-features
+
+      - name: Payload as it is actually built
+        run: cargo check -p frustracean-hook --no-default-features
+
+      # Hook installation is off by default because the detour stub is not
+      # implemented. It still has to compile.
+      - name: Payload with the detour feature
+        run: cargo check -p frustracean-hook --features detour
+
+  msrv:
+    name: minimum supported Rust version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the declared MSRV
+        uses: dtolnay/rust-toolchain@1.85.0
+      - uses: Swatinem/rust-cache@v2
+      # Checked rather than tested: the point is that the declared
+      # `rust-version` in Cargo.toml is true, not that the suite passes twice.
+      - run: cargo check --workspace
+
+  catalogue:
+    name: signature catalogue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # Every rule is validated at load time - argument models, regexes, and
+      # the capture/compare relationships. This is the cheapest way to stop a
+      # malformed rule reaching anyone.
+      - name: Load and validate every rule
+        run: cargo run --quiet --bin frustracean -- rules
+
+  testbed:
+    name: testbed end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --workspace
+
+      # The bundled fixture packs and unpacks itself. Running the static
+      # pipeline against it is the closest thing to an integration test that
+      # does not need a malware sample.
+      - name: The fixture unpacks itself
+        run: ./target/release/frustracean-testbed
+
+      - name: Static pipeline against the fixture
+        run: |
+          ./target/release/frustracean scan   ./target/release/frustracean-testbed
+          ./target/release/frustracean map    ./target/release/frustracean-testbed
+          ./target/release/frustracean plan   ./target/release/libfrustracean_testbed_payload.so
+
+      - name: Replay the recorded example trace
+        run: |
+          ./target/release/frustracean replay docs/examples/testbed-trace.jsonl \
+            --plan docs/examples/testbed-plan.json

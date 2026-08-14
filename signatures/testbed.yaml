@@ -1,0 +1,74 @@
+# Rules for the bundled testbed fixture.
+#
+# These match `crates/frustracean-testbed`, a benign sample that packs and
+# unpacks itself. They are here so the whole pipeline can be exercised without a
+# real malware sample, and so the two resolution paths can be demonstrated side
+# by side against a target whose correct answer is known:
+#
+#   - `frustracean plan target/release/frustracean_testbed_payload.dll`
+#     resolves by **symbol**, because a cdylib exports its `#[no_mangle]` shims.
+#
+#   - `frustracean plan target/release/frustracean-testbed.exe`
+#     resolves by **string cross-reference**, because an MSVC-linked Rust
+#     executable carries no symbol table at all. This is the realistic case.
+#
+# Nothing in this file matches a real-world crate, so it costs nothing to leave
+# enabled; it simply produces no targets against anything but the fixture.
+
+version: 1
+family: other
+
+rules:
+  - id: testbed.stage1.decrypt
+    description: >
+      Testbed stage 1. XOR keystream decryption, in place: the buffer holds the
+      packed blob on entry and RLE-compressed bytes on return. This is the
+      fixture's cleanest entropy transition, around 7.99 down to 5.7.
+    crate: frustracean-testbed
+    tags: [fixture, symmetric, in-place]
+    confidence: high
+    match:
+      # The cdylib's exported C shim. Not Rust-mangled, so this matches the raw
+      # symbol rather than a demangled path.
+      symbol_regex: '^testbed_stage1_decrypt$'
+      # The domain-separating tag, mixed into the key schedule so the compiler
+      # must emit a real reference to it from inside the function.
+      strings:
+        - "FRUSTRACEAN_TESTBED::stage1/keystream-xor"
+      min_string_hits: 1
+    abi:
+      sret: false
+      args:
+        - {name: key, kind: slice}
+        - {name: buffer, kind: slice_mut}
+    capture:
+      when: both
+      dump: [key, buffer]
+      expect: entropy_drop
+      max_bytes: 1048576
+
+  - id: testbed.stage2.expand
+    description: >
+      Testbed stage 2. Run-length expansion into a separate output buffer.
+      Because the output is empty on entry, the transition has to be measured
+      across two different buffers - this is the rule that exercises `compare`.
+    crate: frustracean-testbed
+    tags: [fixture, decompress]
+    confidence: high
+    match:
+      symbol_regex: '^testbed_stage2_expand$'
+      strings:
+        - "FRUSTRACEAN_TESTBED::stage2/rle-expand"
+      min_string_hits: 1
+    abi:
+      # Returns `usize`, which fits in a register, so no hidden out-pointer.
+      sret: false
+      args:
+        - {name: input, kind: slice}
+        - {name: output, kind: slice_mut}
+    capture:
+      when: both
+      dump: [input, output]
+      expect: entropy_drop
+      compare: {from: input, to: output}
+      max_bytes: 4194304

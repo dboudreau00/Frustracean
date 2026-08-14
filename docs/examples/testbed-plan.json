@@ -1,0 +1,691 @@
+{
+  "version": 1,
+  "image": {
+    "path": "target/release/frustracean_testbed_payload.dll",
+    "sha256": "63a4cd29671eac138d20cf44a3d366287fd6315aa492c0592e7c1e0e440acf14",
+    "format": "pe",
+    "arch": "x86_64",
+    "bits": 64,
+    "preferred_base": 6442450944,
+    "entry_rva": 75540
+  },
+  "abi": "win64",
+  "targets": [
+    {
+      "id": "testbed.stage1.decrypt",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "testbed_stage1_decrypt",
+      "rva": 5392,
+      "preferred_va": 6442456336,
+      "file_offset": 2320,
+      "resolution": "symbol",
+      "confidence": "high",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 5,
+      "needs_relocation": true,
+      "original_bytes": "4885c97409",
+      "evidence": [
+        "symbol \"testbed_stage1_decrypt\" matched rule testbed.stage1.decrypt"
+      ]
+    },
+    {
+      "id": "testbed.stage2.expand",
+      "rule_id": "testbed.stage2.expand",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 2. Run-length expansion into a separate output buffer. Because the output is empty on entry, the transition has to be measured across two different buffers - this is the rule that exercises `compare`.\n",
+      "symbol": "testbed_stage2_expand",
+      "rva": 5408,
+      "preferred_va": 6442456352,
+      "file_offset": 2336,
+      "resolution": "symbol",
+      "confidence": "high",
+      "args": [
+        {
+          "name": "input",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "output",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "input",
+          "output"
+        ],
+        "expect": "entropy_drop",
+        "compare": {
+          "from": "input",
+          "to": "output"
+        },
+        "max_bytes": 4194304
+      },
+      "patch_len": 5,
+      "needs_relocation": true,
+      "original_bytes": "4885c97409",
+      "evidence": [
+        "symbol \"testbed_stage2_expand\" matched rule testbed.stage2.expand"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#4",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_2c00",
+      "rva": 11264,
+      "preferred_va": 6442462208,
+      "file_offset": 8192,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 6,
+      "needs_relocation": false,
+      "original_bytes": "55564883ec78",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 2 reference(s) for rule testbed.stage1.decrypt",
+        "0x180002ca2 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x1800151e0",
+        "0x180002c6a references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x1800151e8"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#2",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_12400",
+      "rva": 74752,
+      "preferred_va": 6442525696,
+      "file_offset": 71680,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 6,
+      "needs_relocation": false,
+      "original_bytes": "4883ec2885d2",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 5 reference(s) for rule testbed.stage1.decrypt",
+        "0x18001252b references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208",
+        "0x1800124de references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015230",
+        "0x1800124d7 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015238",
+        "0x1800124be references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015240",
+        "0x1800124b7 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015248"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#3",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_12568",
+      "rva": 75112,
+      "preferred_va": 6442526056,
+      "file_offset": 72040,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 5,
+      "needs_relocation": false,
+      "original_bytes": "48895c2408",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 3 reference(s) for rule testbed.stage1.decrypt",
+        "0x18001263a references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208",
+        "0x1800126b1 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208",
+        "0x1800126f0 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#6",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_129d0",
+      "rva": 76240,
+      "preferred_va": 6442527184,
+      "file_offset": 73168,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 5,
+      "needs_relocation": false,
+      "original_bytes": "48895c2408",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 1 reference(s) for rule testbed.stage1.decrypt",
+        "0x180012a08 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#7",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_12d84",
+      "rva": 77188,
+      "preferred_va": 6442528132,
+      "file_offset": 74116,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 5,
+      "needs_relocation": false,
+      "original_bytes": "48895c2408",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 1 reference(s) for rule testbed.stage1.decrypt",
+        "0x180012da6 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#8",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_12dc0",
+      "rva": 77248,
+      "preferred_va": 6442528192,
+      "file_offset": 74176,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 5,
+      "needs_relocation": false,
+      "original_bytes": "48895c2408",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 1 reference(s) for rule testbed.stage1.decrypt",
+        "0x180012de2 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x180015208"
+      ]
+    },
+    {
+      "id": "testbed.stage2.expand#2",
+      "rule_id": "testbed.stage2.expand",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 2. Run-length expansion into a separate output buffer. Because the output is empty on entry, the transition has to be measured across two different buffers - this is the rule that exercises `compare`.\n",
+      "symbol": "sub_130f5",
+      "rva": 78069,
+      "preferred_va": 6442529013,
+      "file_offset": 74997,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "input",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "output",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "input",
+          "output"
+        ],
+        "expect": "entropy_drop",
+        "compare": {
+          "from": "input",
+          "to": "output"
+        },
+        "max_bytes": 4194304
+      },
+      "patch_len": 6,
+      "needs_relocation": true,
+      "original_bytes": "ff25a5200000",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 2 reference(s) for rule testbed.stage2.expand",
+        "0x1800130f5 references \"FRUSTRACEAN_TESTBED::stage2/rle-expand\" at 0x1800151a0",
+        "0x1800130fb references \"FRUSTRACEAN_TESTBED::stage2/rle-expand\" at 0x1800151a8"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#9",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_13107",
+      "rva": 78087,
+      "preferred_va": 6442529031,
+      "file_offset": 75015,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 6,
+      "needs_relocation": true,
+      "original_bytes": "ff25ab200000",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 1 reference(s) for rule testbed.stage1.decrypt",
+        "0x180013107 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x1800151b8"
+      ]
+    },
+    {
+      "id": "testbed.stage1.decrypt#5",
+      "rule_id": "testbed.stage1.decrypt",
+      "crate_name": "frustracean-testbed",
+      "description": "Testbed stage 1. XOR keystream decryption, in place: the buffer holds the packed blob on entry and RLE-compressed bytes on return. This is the fixture's cleanest entropy transition, around 7.99 down to 5.7.\n",
+      "symbol": "sub_1310d",
+      "rva": 78093,
+      "preferred_va": 6442529037,
+      "file_offset": 75021,
+      "resolution": "string_xref",
+      "confidence": "low",
+      "args": [
+        {
+          "name": "key",
+          "kind": "slice",
+          "value": {
+            "kind": "register",
+            "name": "rcx"
+          },
+          "length": {
+            "kind": "register",
+            "name": "rdx"
+          }
+        },
+        {
+          "name": "buffer",
+          "kind": "slice_mut",
+          "value": {
+            "kind": "register",
+            "name": "r8"
+          },
+          "length": {
+            "kind": "register",
+            "name": "r9"
+          }
+        }
+      ],
+      "capture": {
+        "when": "both",
+        "dump": [
+          "key",
+          "buffer"
+        ],
+        "expect": "entropy_drop",
+        "compare": null,
+        "max_bytes": 1048576
+      },
+      "patch_len": 6,
+      "needs_relocation": true,
+      "original_bytes": "ff25ad200000",
+      "evidence": [
+        "no symbol; located by 1 distinct anchor(s) across 2 reference(s) for rule testbed.stage1.decrypt",
+        "0x18001310d references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x1800151c0",
+        "0x180013113 references \"FRUSTRACEAN_TESTBED::stage1/keystream-xor\" at 0x1800151c8"
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_2c00",
+      "preferred_va": 6442462208,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#4"
+      ]
+    },
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_12400",
+      "preferred_va": 6442525696,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#2"
+      ]
+    },
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_12568",
+      "preferred_va": 6442526056,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#3"
+      ]
+    },
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_129d0",
+      "preferred_va": 6442527184,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#6"
+      ]
+    },
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_12d84",
+      "preferred_va": 6442528132,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#7"
+      ]
+    },
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_12dc0",
+      "preferred_va": 6442528192,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#8"
+      ]
+    },
+    {
+      "rule_id": "testbed.stage2.expand",
+      "symbol": "sub_1310d",
+      "preferred_va": 6442529037,
+      "reasons": [
+        "address already hooked by target testbed.stage1.decrypt#5"
+      ]
+    }
+  ]
+}

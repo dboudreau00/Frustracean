@@ -1,0 +1,68 @@
+name: Signature rule
+description: A crate worth hooking, or a rule that resolves incorrectly
+labels: [signatures]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong argument model is worse than a missing rule: it silently dumps
+        the wrong register and presents the result as a finding. Please be as
+        concrete as you can.
+
+  - type: input
+    id: crate
+    attributes:
+      label: Crate and version
+      placeholder: "aes-gcm 0.10.3"
+    validations:
+      required: true
+
+  - type: input
+    id: function
+    attributes:
+      label: Function
+      description: The demangled path, as it appears in a real binary.
+      placeholder: "<aes_gcm::AesGcm<..> as aead::AeadInPlace>::decrypt_in_place_detached"
+    validations:
+      required: true
+
+  - type: textarea
+    id: signature
+    attributes:
+      label: Rust signature
+      description: >
+        The real one, from the crate's source. Note anything returning more
+        than a register's worth, since that decides `sret`.
+      render: rust
+    validations:
+      required: true
+
+  - type: textarea
+    id: anchors
+    attributes:
+      label: String anchors
+      description: >
+        Constants that survive into a compiled binary and can locate this
+        function when the sample is stripped. Say why they survive - a value
+        that gets const-folded away is not an anchor.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Expected entropy direction
+      options:
+        - entropy_drop (decrypt / decompress)
+        - entropy_rise (encrypt / compress)
+        - any (symmetric, direction unknown from the symbol)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: verified
+    attributes:
+      label: Verification
+      options:
+        - label: I checked the argument model against a disassembly, not just the source
+        - label: This function writes to a separate output buffer, so the rule needs `compare`

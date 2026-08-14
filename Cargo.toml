@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/frustracean-core",
+    "crates/frustracean-cli",
+    "crates/frustracean-hook",
+    "crates/frustracean-testbed",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# Checked in CI. Nothing here needs anything newer than `LazyLock` (1.80), but
+# a declared MSRV that nobody verifies is just a comment.
+rust-version = "1.85"
+license = "MIT"
+authors = ["dboudreau00"]
+repository = "https://github.com/dboudreau00/Frustracean"
+homepage = "https://github.com/dboudreau00/Frustracean"
+keywords = ["malware-analysis", "reverse-engineering", "entropy", "unpacking", "security"]
+categories = ["command-line-utilities", "development-tools::debugging"]
+
+[workspace.lints.rust]
+# An `unsafe fn` is not a licence for its whole body. This forces each unsafe
+# operation inside one to be marked, which matters in a crate that writes to
+# another process's memory.
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+# Every `unsafe` block must say why it is sound. This is the single most
+# valuable lint in this codebase: the payload and the injector are the only
+# places a mistake corrupts a live process rather than returning an error.
+undocumented_unsafe_blocks = "warn"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+anyhow = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+# Deliberately not `panic = "abort"`: the payload catches panics at the DllMain
+# boundary so a bug in the hook cannot unwind into the sample's loader, and
+# aborting would take the sample down mid-unpack instead.
+
+[profile.release.package.frustracean-hook]
+opt-level = "s"

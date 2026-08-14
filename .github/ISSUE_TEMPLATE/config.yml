@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/dboudreau00/Frustracean/security/advisories/new
+    about: >
+      Report crashes on crafted input, or anything in SECURITY.md's scope,
+      privately. Please do not open a public issue for these.
+  - name: A sample that defeats analysis
+    url: https://github.com/dboudreau00/Frustracean/issues/new
+    about: >
+      A sample that detects the hook or refuses to unpack is an arms race, not
+      a security bug. Open a normal issue for it.

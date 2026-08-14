@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 969 501" width="969" height="501" role="img" aria-label="Terminal output: frustracean map sample.exe">
+<rect x="0" y="0" width="969" height="501" rx="10" fill="#14181F"/>
+<path d="M0 10 a10 10 0 0 1 10 -10 h949 a10 10 0 0 1 10 10 v22 h-969 z" fill="#1C222C"/>
+<rect x="0.5" y="0.5" width="968" height="500" rx="9.5" fill="none" stroke="#2A313D"/>
+<circle cx="18" cy="16" r="5" fill="#F2666B"/>
+<circle cx="36" cy="16" r="5" fill="#E3B341"/>
+<circle cx="54" cy="16" r="5" fill="#5BC98C"/>
+<text x="484.5" y="21" font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6B7787" text-anchor="middle">frustracean</text>
+<g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
+<text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean map sample.exe</tspan></text>
+<text x="18" y="100"><tspan fill="#C7D0DC">﻿File: .\target\release\frustracean-testbed.exe</tspan></text>
+<text x="18" y="121"><tspan fill="#8FA0B4">Window:</tspan><tspan fill="#E6EDF5"> 256 bytes, step 128</tspan></text>
+<text x="18" y="142"><tspan fill="#8FA0B4">Threshold:</tspan><tspan fill="#E6EDF5"> 7.00 bits/byte</tspan></text>
+<text x="18" y="184"><tspan fill="#FFB088" font-weight="600">Sections</tspan></text>
+<text x="18" y="205"><tspan fill="#C7D0DC">.text: va 0x140001000, 132.00 KiB (135168 bytes) on disk, entropy 6.43, r-x, density code</tspan></text>
+<text x="18" y="226"><tspan fill="#C7D0DC">.rdata: va 0x140022000, 55.00 KiB (56320 bytes) on disk, entropy 6.46, r--, density code</tspan></text>
+<text x="18" y="247"><tspan fill="#C7D0DC">.data: va 0x140030000, 512 bytes on disk, entropy 1.61, rw-, density structured</tspan></text>
+<text x="18" y="268"><tspan fill="#C7D0DC">.pdata: va 0x140031000, 5.00 KiB (5120 bytes) on disk, entropy 5.22, r--, density code</tspan></text>
+<text x="18" y="289"><tspan fill="#C7D0DC">.reloc: va 0x140033000, 1.00 KiB (1024 bytes) on disk, entropy 4.40, r--, density structured</tspan></text>
+<text x="18" y="331"><tspan fill="#FFB088" font-weight="600">Opaque regions</tspan></text>
+<text x="18" y="352"><tspan fill="#8FA0B4">Region 1:</tspan><tspan fill="#E6EDF5"> offset 0x23d00..0x27200, 13.25 KiB (13568 bytes), mean 7.16, peak 7.31, class encrypted, .rdata at va</tspan></text>
+<text x="18" y="373"><tspan fill="#6B7787">    0x140024900</tspan></text>
+<text x="18" y="415"><tspan fill="#FFB088" font-weight="600">Summary</tspan></text>
+<text x="18" y="436"><tspan fill="#8FA0B4">Regions:</tspan><tspan fill="#E6EDF5"> 1</tspan></text>
+<text x="18" y="457"><tspan fill="#8FA0B4">Opaque bytes:</tspan><tspan fill="#E6EDF5"> 13.25 KiB (13568 bytes)</tspan></text>
+<text x="18" y="478"><tspan fill="#8FA0B4">Share of file:</tspan><tspan fill="#E6EDF5"> 6.8%</tspan></text>
+</g>
+</svg>

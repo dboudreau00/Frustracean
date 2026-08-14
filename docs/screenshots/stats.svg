@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 725 333" width="725" height="333" role="img" aria-label="Terminal output: frustracean stats capture/blobs/stage0-packed.bin">
+<rect x="0" y="0" width="725" height="333" rx="10" fill="#14181F"/>
+<path d="M0 10 a10 10 0 0 1 10 -10 h705 a10 10 0 0 1 10 10 v22 h-725 z" fill="#1C222C"/>
+<rect x="0.5" y="0.5" width="724" height="332" rx="9.5" fill="none" stroke="#2A313D"/>
+<circle cx="18" cy="16" r="5" fill="#F2666B"/>
+<circle cx="36" cy="16" r="5" fill="#E3B341"/>
+<circle cx="54" cy="16" r="5" fill="#5BC98C"/>
+<text x="362.5" y="21" font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6B7787" text-anchor="middle">frustracean</text>
+<g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
+<text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean stats capture/blobs/stage0-packed.bin</tspan></text>
+<text x="18" y="100"><tspan fill="#C7D0DC">﻿File: C:\Users\vmwar\AppData\Local\Temp\frustracean-shots\stage0-packed.bin</tspan></text>
+<text x="18" y="121"><tspan fill="#8FA0B4">SHA256:</tspan><tspan fill="#E6EDF5"> 7f1e6fcafc0506e1dde0a9db62db885c761fee48599122732d1f51ed5a7d8716</tspan></text>
+<text x="18" y="142"><tspan fill="#8FA0B4">Size:</tspan><tspan fill="#E6EDF5"> 13.21 KiB (13523 bytes)</tspan></text>
+<text x="18" y="163"><tspan fill="#8FA0B4">Entropy:</tspan><tspan fill="#E6EDF5"> 7.9857 bits/byte</tspan></text>
+<text x="18" y="184"><tspan fill="#8FA0B4">Chi-square:</tspan><tspan fill="#E6EDF5"> 266.0 (1.04x the uniform expectation of 255)</tspan></text>
+<text x="18" y="205"><tspan fill="#8FA0B4">Printable:</tspan><tspan fill="#E6EDF5"> 37.6%</tspan></text>
+<text x="18" y="226"><tspan fill="#8FA0B4">Distinct bytes:</tspan><tspan fill="#E6EDF5"> 256 of 256</tspan></text>
+<text x="18" y="247"><tspan fill="#8FA0B4">Class:</tspan><tspan fill="#E6EDF5"> encrypted</tspan></text>
+<text x="18" y="289"><tspan fill="#FFB088" font-weight="600">Reading</tspan></text>
+<text x="18" y="310"><tspan fill="#6B7787">  High entropy with a near-uniform byte distribution: ciphertext or CSPRNG output.</tspan></text>
+</g>
+</svg>

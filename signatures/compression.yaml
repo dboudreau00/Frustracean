@@ -1,0 +1,150 @@
+# Decompression.
+#
+# Compression is the other half of a packer. A stub that decrypts and then
+# inflates produces two distinct entropy transitions, and seeing both in the
+# trace is what distinguishes a real unpacking chain from a one-off string
+# decrypt.
+#
+# Note the entropy expectation. Compressed input sits around 7.0-7.9 with
+# *structure* - Frustracean's chi-square corroborator is what separates it from
+# ciphertext - and the inflated output typically lands between 4 and 6.
+
+version: 1
+family: compression
+
+rules:
+  - id: rust.compression.miniz_oxide.inflate_core_decompress
+    description: >
+      The raw DEFLATE state machine underneath flate2's default backend. Hooking
+      here rather than at the flate2 wrapper catches samples that call
+      miniz_oxide directly, and survives flate2 being inlined.
+
+      Note `sret`: this function returns `(TINFLStatus, usize, usize)`, which is
+      too large for a register, so the caller passes a hidden out-pointer that
+      consumes the first argument slot. Without the flag every argument below
+      would be read one register early.
+    crate: miniz_oxide
+    tags: [deflate, inflate]
+    confidence: high
+    match:
+      demangled_regex: '^miniz_oxide::inflate::core::decompress$'
+      strings:
+        - "miniz_oxide-0."
+        - "src/inflate/core.rs"
+      min_string_hits: 1
+    abi:
+      sret: true
+      args:
+        - {name: state, kind: ptr}
+        - {name: input, kind: slice}
+        - {name: output, kind: slice_mut}
+        - {name: out_pos, kind: len}
+        - {name: flags, kind: int}
+    capture:
+      when: both
+      dump: [input, output]
+      expect: entropy_drop
+      # The output buffer is empty on entry, so comparing it against itself
+      # measures nothing. The transition is compressed input to inflated output.
+      compare: {from: input, to: output}
+      max_bytes: 16777216
+
+  - id: rust.compression.miniz_oxide.decompress_to_vec
+    description: >
+      The convenience wrapper. Returns a fresh `Vec<u8>`, so the recovered data
+      is in the return value rather than an argument - captured here on entry
+      for the compressed input, with the plaintext recovered from the
+      corresponding `inflate_core_decompress` call.
+    crate: miniz_oxide
+    tags: [deflate, inflate, wrapper]
+    confidence: medium
+    match:
+      demangled_regex: '^miniz_oxide::inflate::decompress_to_vec(_zlib)?(_with_limit)?(::<|$)'
+    abi:
+      sret: true
+      args:
+        - {name: input, kind: slice}
+    capture:
+      when: entry
+      dump: [input]
+      expect: any
+      max_bytes: 16777216
+
+  - id: rust.compression.flate2.decompress
+    description: flate2's streaming decompressor, the layer above miniz_oxide.
+    crate: flate2
+    tags: [deflate, zlib, streaming]
+    confidence: medium
+    match:
+      # `sret` here is the Win64 answer. The return is `Result<Status, DecompressError>`,
+      # around 12 bytes: too large for a Win64 register, but small enough that
+      # SysV64 returns it in RAX:RDX. Against an ELF sample this rule needs
+      # `sret: false`, or every argument shifts by one slot.
+      demangled_regex: '^flate2::mem::Decompress::decompress(::<|$)'
+      strings:
+        - "flate2-1."
+      min_string_hits: 1
+    abi:
+      sret: true
+      args:
+        - {name: this, kind: ptr}
+        - {name: input, kind: slice}
+        - {name: output, kind: slice_mut}
+        - {name: flush, kind: int}
+    capture:
+      when: both
+      dump: [input, output]
+      expect: entropy_drop
+      compare: {from: input, to: output}
+      max_bytes: 16777216
+
+  - id: rust.compression.lz4_flex.decompress_into
+    description: >
+      LZ4. Fast enough that samples use it for in-memory stage unpacking where
+      DEFLATE would be noticeably slow.
+    crate: lz4_flex
+    tags: [lz4]
+    confidence: high
+    match:
+      demangled_regex: '^lz4_flex::block::decompress::decompress_into(::<|$)'
+      strings:
+        - "lz4_flex-0."
+      min_string_hits: 1
+    abi:
+      sret: true
+      args:
+        - {name: input, kind: slice}
+        - {name: output, kind: slice_mut}
+    capture:
+      when: both
+      dump: [input, output]
+      expect: entropy_drop
+      compare: {from: input, to: output}
+      max_bytes: 16777216
+
+  - id: rust.compression.ruzstd.present
+    description: >
+      Detection only. Pure-Rust zstd decoding, the usual choice when a sample
+      avoids C dependencies.
+
+      This rule declares no arguments on purpose. ruzstd's decoding entry points
+      do not share a single `(&self, &[u8])` shape - the work happens across a
+      streaming decoder holding its own ring buffer - so any argument model
+      written here would be a guess, and a guessed model silently dumps the
+      wrong register. Flagging the crate's presence is honest; claiming to know
+      where its buffers live is not.
+    crate: ruzstd
+    tags: [zstd, detection-only]
+    confidence: low
+    match:
+      strings:
+        - "ruzstd-0."
+      min_string_hits: 1
+    abi:
+      sret: false
+      args: []
+    capture:
+      when: entry
+      dump: []
+      expect: any
+      max_bytes: 1

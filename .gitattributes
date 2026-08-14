@@ -1,0 +1,20 @@
+# Normalise line endings. This repo is developed on Windows and built in CI on
+# both Windows and Linux, so without this the first `cargo fmt` on a Linux
+# checkout rewrites every file.
+* text=auto eol=lf
+
+# PowerShell tolerates LF, but keeping the scripts CRLF avoids surprises for
+# anyone editing them in a Windows-only editor.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Generated screenshots and artwork are text, but diffing them line by line is
+# noise; mark them so GitHub collapses them in pull requests.
+docs/screenshots/*.svg linguist-generated=true
+docs/*.svg linguist-documentation=true
+
+# Binary fixtures, should any be added, must never be line-ending mangled.
+*.bin binary
+*.exe binary
+*.dll binary

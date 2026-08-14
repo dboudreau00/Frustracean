@@ -1,0 +1,35 @@
+[package]
+name = "frustracean-cli"
+description = "Command-line driver for Frustracean"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "frustracean"
+path = "src/main.rs"
+
+[dependencies]
+frustracean-core = { path = "../frustracean-core" }
+clap = { version = "4", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_Memory",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_LibraryLoader",
+    "Win32_Security",
+] }
+
+[lints]
+workspace = true

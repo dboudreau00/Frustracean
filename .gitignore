@@ -1,0 +1,21 @@
+/target
+**/*.rs.bk
+
+# Analysis output. Captured blobs come out of real samples, so nothing here
+# should ever reach a repository.
+#
+# Note the leading slashes. An unanchored `*.jsonl` would also match
+# docs/examples/testbed-trace.jsonl, which is a checked-in reference artefact —
+# the acceptance criterion for the unfinished detour stub.
+/capture/
+/stages/
+/plan.json
+/trace.jsonl
+/report.md
+
+# Editors and OS noise.
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store

@@ -1,0 +1,34 @@
+[package]
+name = "frustracean-core"
+description = "Rust-aware entropy analysis, symbol recovery, and call-hijack planning for malware triage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# `analysis` pulls in the heavy static-analysis stack (binary parsing, disassembly,
+# signature loading). The injected hook payload builds with `default-features = false`
+# so it only carries the shared wire types plus the entropy math.
+default = ["analysis"]
+analysis = ["dep:goblin", "dep:iced-x86", "dep:regex", "dep:serde_yaml", "dep:rustc-demangle"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+goblin = { version = "0.9", optional = true }
+iced-x86 = { version = "1.21", optional = true }
+regex = { version = "1", optional = true }
+serde_yaml = { version = "0.9", optional = true }
+rustc-demangle = { version = "0.1", optional = true }
+
+[lints]
+workspace = true

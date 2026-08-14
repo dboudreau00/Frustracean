@@ -1,0 +1,81 @@
+# Transport encodings.
+#
+# Not obfuscation and not compression, but the layer a payload is almost always
+# wrapped in before it is embedded in a config blob or pulled down from a C2.
+#
+# The entropy expectation here is deliberately `any`, and the reason is worth
+# stating: base64 output is roughly 6 bits per byte by construction, so decoding
+# an *encrypted* payload makes entropy go **up**, not down. Scoring these as a
+# failed decrypt would be wrong. What matters is the pairing - a base64 decode
+# whose output immediately becomes the input to a hooked cipher is the shape of
+# a staged loader, and that is visible in the trace by call ordering.
+
+version: 1
+family: other
+
+rules:
+  - id: rust.encoding.base64.decode
+    description: base64 decoding via the `Engine` trait (base64 0.21 and later).
+    crate: base64
+    tags: [base64, transport]
+    confidence: medium
+    match:
+      demangled_regex: 'as base64::engine::Engine>::(internal_)?decode'
+      strings:
+        - "base64-0.2"
+        - "Invalid symbol"
+      min_string_hits: 2
+    abi:
+      sret: true
+      args:
+        - {name: this, kind: ptr}
+        - {name: input, kind: slice}
+    capture:
+      when: entry
+      dump: [input]
+      expect: any
+      max_bytes: 4194304
+
+  - id: rust.encoding.hex.decode
+    description: >
+      Hex decoding. Cheap to spot and common in configuration blobs, where an
+      author wanted something that survives being pasted into a JSON field.
+    crate: hex
+    tags: [hex, transport]
+    confidence: low
+    match:
+      demangled_regex: '^hex::decode(_to_slice)?(::<|$)'
+      strings:
+        - "hex-0.4"
+      min_string_hits: 1
+    abi:
+      sret: true
+      args:
+        - {name: input, kind: slice}
+    capture:
+      when: entry
+      dump: [input]
+      expect: any
+      max_bytes: 4194304
+
+  - id: rust.encoding.serde_json.from_slice
+    description: >
+      JSON deserialisation. Not a decode in the entropy sense, but hooking it
+      catches the moment a decrypted configuration becomes structured - which is
+      usually where the C2 list, campaign id, and kill-switch live.
+    crate: serde_json
+    tags: [config, structured]
+    confidence: low
+    match:
+      # Generic, so v0 mangling renders it as `from_slice::<T>`; a bare `$`
+      # anchor would match only the legacy scheme.
+      demangled_regex: '^serde_json::de::from_slice(::<|$)'
+    abi:
+      sret: true
+      args:
+        - {name: input, kind: slice}
+    capture:
+      when: entry
+      dump: [input]
+      expect: any
+      max_bytes: 1048576

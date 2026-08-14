@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 944 459" width="944" height="459" role="img" aria-label="Terminal output: frustracean replay capture/trace.jsonl --plan plan.json">
+<rect x="0" y="0" width="944" height="459" rx="10" fill="#14181F"/>
+<path d="M0 10 a10 10 0 0 1 10 -10 h924 a10 10 0 0 1 10 10 v22 h-944 z" fill="#1C222C"/>
+<rect x="0.5" y="0.5" width="943" height="458" rx="9.5" fill="none" stroke="#2A313D"/>
+<circle cx="18" cy="16" r="5" fill="#F2666B"/>
+<circle cx="36" cy="16" r="5" fill="#E3B341"/>
+<circle cx="54" cy="16" r="5" fill="#5BC98C"/>
+<text x="472" y="21" font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6B7787" text-anchor="middle">frustracean</text>
+<g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
+<text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean replay capture/trace.jsonl --plan plan.json</tspan></text>
+<text x="18" y="100"><tspan fill="#C7D0DC">﻿Trace: docs/examples/testbed-trace.jsonl</tspan></text>
+<text x="18" y="121"><tspan fill="#8FA0B4">Records:</tspan><tspan fill="#E6EDF5"> 7</tspan></text>
+<text x="18" y="142"><tspan fill="#8FA0B4">Hijacked calls:</tspan><tspan fill="#E6EDF5"> 2</tspan></text>
+<text x="18" y="163"><tspan fill="#8FA0B4">Complete calls:</tspan><tspan fill="#E6EDF5"> 2</tspan></text>
+<text x="18" y="184"><tspan fill="#8FA0B4">Buffer transitions:</tspan><tspan fill="#E6EDF5"> 2</tspan></text>
+<text x="18" y="205"><tspan fill="#8FA0B4">Confirmed transitions:</tspan><tspan fill="#E6EDF5"> 1</tspan></text>
+<text x="18" y="226"><tspan fill="#8FA0B4">Bytes recovered:</tspan><tspan fill="#E6EDF5"> 13.21 KiB (13523 bytes)</tspan></text>
+<text x="18" y="247"><tspan fill="#8FA0B4">Distinct blobs:</tspan><tspan fill="#E6EDF5"> 2</tspan></text>
+<text x="18" y="289"><tspan fill="#FFB088" font-weight="600">Entropy transitions (most significant first)</tspan></text>
+<text x="18" y="310"><tspan fill="#8FA0B4">call 1 testbed.stage1.decrypt:</tspan><tspan fill="#E6EDF5"> buffer 13523 bytes, 7.99 -&gt; 5.70 (-2.29), encrypted -&gt; text, confirmed unpack</tspan></text>
+<text x="18" y="331"><tspan fill="#6B7787">  dump: blobs/710300e0.bin</tspan></text>
+<text x="18" y="352"><tspan fill="#8FA0B4">call 2 testbed.stage2.expand:</tspan><tspan fill="#E6EDF5"> input -&gt; output 45504 bytes, 5.70 -&gt; 4.57 (-1.12), text -&gt; text, not confirmed</tspan></text>
+<text x="18" y="373"><tspan fill="#6B7787">  dump: blobs/4cb7ec2c.bin</tspan></text>
+<text x="18" y="415"><tspan fill="#FFB088" font-weight="600">Summary</tspan></text>
+<text x="18" y="436"><tspan fill="#5BC98C" font-weight="600">OK:</tspan><tspan fill="#C7D0DC"> 1 confirmed transition(s), 13.21 KiB (13523 bytes) captured</tspan></text>
+</g>
+</svg>

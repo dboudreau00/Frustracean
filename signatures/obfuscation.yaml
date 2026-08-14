@@ -1,0 +1,89 @@
+# String obfuscation.
+#
+# Rust malware leans on these crates hard, because the language's own habits
+# work against the author: string literals sit in `.rodata` as plain UTF-8, and
+# panic sites drag in file paths whether the author wants them or not. An
+# obfuscation crate is often the only thing standing between an analyst and the
+# C2 address.
+#
+# The distinction that matters when writing rules here is *when* deobfuscation
+# happens:
+#
+#   - `litcrypt` calls a real runtime function. Hookable.
+#   - `obfstr` expands to inline XOR at each use site with no function to hook.
+#     There is nothing to hijack, so its rule is detection-only: it flags the
+#     crate's presence from `.rodata` anchors so an analyst knows to expect
+#     inline deobfuscation rather than wondering why no hook fires.
+
+version: 1
+family: obfuscation
+
+rules:
+  - id: rust.obfuscation.litcrypt.decrypt_bytes
+    description: >
+      litcrypt's runtime deobfuscator, called by every `lc!()` expansion. One
+      hook recovers every obfuscated literal in the sample - C2 hosts, mutex
+      names, registry paths - as the program uses them.
+
+      Returns a `String`, so `sret` is set and the first slot is the hidden
+      out-pointer rather than `encoded`.
+    crate: litcrypt
+    tags: [strings, xor, runtime]
+    confidence: high
+    match:
+      demangled_regex: '^litcrypt::internal::decrypt_bytes$'
+      strings:
+        - "litcrypt-0."
+        - "LITCRYPT_ENCRYPT_KEY"
+      min_string_hits: 1
+    abi:
+      sret: true
+      args:
+        - {name: encoded, kind: slice}
+        - {name: key, kind: slice}
+    capture:
+      when: entry
+      dump: [encoded, key]
+      expect: any
+      max_bytes: 65536
+
+  - id: rust.obfuscation.obfstr.present
+    description: >
+      Detection only. obfstr deobfuscates inline at each use site, so there is
+      no function to hijack; this rule exists so its presence is reported rather
+      than silently explaining why the string hooks never fire. Expect to
+      recover these literals from memory after the fact, not from a trace.
+
+      A miss here means nothing. obfstr is `no_std` and largely const-evaluated,
+      so a sample can use it without ever creating a panic site inside the
+      crate - and with no panic site there is no embedded registry path to
+      match. Absence of this rule is not absence of the crate.
+    crate: obfstr
+    tags: [strings, xor, compile-time, detection-only]
+    confidence: low
+    match:
+      strings:
+        - "obfstr-0."
+      min_string_hits: 1
+    abi:
+      sret: false
+      args: []
+    capture:
+      when: entry
+      dump: []
+      expect: any
+      max_bytes: 1
+
+  # goldberg deliberately has no rule.
+  #
+  # It obfuscates integers and control flow at compile time and ships as a
+  # proc-macro crate: its code runs inside rustc and never links into the
+  # sample, so no `goldberg-0.x.y` registry path can appear in a compiled
+  # binary. A rule anchored on one would never fire, and a rule that never
+  # fires is worse than no rule - it reads like evidence of absence.
+  #
+  # What goldberg leaves behind is structural, not textual: a `.text` section
+  # whose branch density and entropy are wrong for compiler output. Detecting
+  # that needs a `bytes:` pattern for its opaque-predicate prologue, or a
+  # measurement in `rustid`. Neither exists yet; see the roadmap.
+

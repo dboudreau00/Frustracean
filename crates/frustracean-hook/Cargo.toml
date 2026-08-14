@@ -1,0 +1,45 @@
+[package]
+name = "frustracean-hook"
+description = "Injected payload: installs the hijack plan's inline hooks and captures buffers"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "frustracean_hook"
+# `rlib` as well as `cdylib` so the trampoline and capture logic can be unit
+# tested on the host without building or loading a DLL.
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+# Emit and install the detour stubs. Off by default: the stub is the one part of
+# the payload that has not been validated against a live target, and enabling it
+# means writing to another process's code. See src/detour.rs.
+detour = []
+
+[dependencies]
+frustracean-core = { path = "../frustracean-core", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+iced-x86 = "1.21"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_Memory",
+    "Win32_System_SystemInformation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_ProcessStatus",
+] }
+
+[lints]
+workspace = true
