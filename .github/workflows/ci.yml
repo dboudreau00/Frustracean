@@ -29,7 +29,7 @@ jobs:
         # crates that are supposed to be portable.
         os: [windows-latest, ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -55,7 +55,7 @@ jobs:
     name: feature combinations
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
@@ -77,7 +77,7 @@ jobs:
     name: minimum supported Rust version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install the declared MSRV
         uses: dtolnay/rust-toolchain@1.85.0
       - uses: Swatinem/rust-cache@v2
@@ -89,7 +89,7 @@ jobs:
     name: signature catalogue
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # Every rule is validated at load time - argument models, regexes, and
@@ -102,7 +102,7 @@ jobs:
     name: testbed end to end
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build
