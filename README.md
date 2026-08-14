@@ -6,7 +6,7 @@
   <a href="https://github.com/dboudreau00/Frustracean/actions/workflows/ci.yml"><img src="https://github.com/dboudreau00/Frustracean/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/rust-1.85%2B-b7410e" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
-  <img src="https://img.shields.io/badge/tests-161-brightgreen" alt="161 tests">
+  <img src="https://img.shields.io/badge/tests-170-brightgreen" alt="170 tests">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey" alt="Windows and Linux">
 </p>
 
@@ -82,6 +82,15 @@ caused two real bugs in this codebase before the tests caught it.
 **Symbols use two mangling schemes** — legacy `_ZN…17h<hash>E` and v0 `_R…` —
 both carrying the owning crate in the path, when symbols survive at all. They
 usually do not: an MSVC-linked Rust executable has *no symbol table whatsoever*.
+
+**But `strip` cannot remove `.pdata`.** The loader needs unwind metadata to
+handle exceptions, so a PE x86-64 binary with no symbols at all still publishes
+an array of `RUNTIME_FUNCTION` records giving the **exact start and end of every
+function** — including the one that does the unpacking. Frustracean reads it,
+and the difference is not marginal: on the bundled testbed it lifts function
+recovery from 248 inferred starts to 469, of which 413 have exact extents.
+Precision there is what stops a string cross-reference being attributed to the
+function next door.
 
 **Payload code is monomorphised generic code from third-party crates.** There is
 no `CryptDecrypt` import to breakpoint. The equivalent is
@@ -295,6 +304,11 @@ The realistic case. A constant the crate is known to embed is located in
 `.rodata`, its RIP-relative references are collected by a linear sweep, and the
 enclosing functions become candidates.
 
+Function boundaries come from `.pdata` when the image has it, so "enclosing
+function" is an exact answer rather than "the greatest known start at or below
+this address". An address in the padding *between* two functions now resolves to
+neither, instead of being pinned on the one before it.
+
 This is a heuristic and is labelled as one:
 
 - `min_string_hits` counts **distinct anchors**, not references. Ten references
@@ -344,6 +358,36 @@ score far higher. This is the single most useful signal for separating
 **Printable ratio**, which pulls UTF-8 blobs — very common in Rust binaries,
 whose string literals run together into long printable stretches — out of the
 "data" bucket.
+
+### Two things these measures cannot do
+
+**Neither entropy nor chi-square can see a single-byte XOR.** XOR permutes the
+histogram's bins; it does not change the multiset of bin counts. Shannon entropy
+is a function of those counts alone, and chi-square against a *uniform* model
+compares every count to the same expected value — so both are *exactly*
+invariant. This is asserted as a test over all 255 keys, not assumed.
+
+Of the three measures only the printable ratio moves at all, and it moves
+monotonically with the key's magnitude rather than collapsing:
+
+| XOR key | printable ratio of the same text |
+|---------|----------------------------------|
+| none | 1.000 |
+| `0x01` | ~1.000 |
+| `0x80` | 0.000 |
+
+A low key leaves printability untouched, which is exactly why it cannot stand
+alone. Detecting single-byte XOR needs chi-square against a *fixed* byte model
+brute-forced over all 256 keys; that is on the roadmap and is not implemented.
+What matters today is not mistaking "the entropy looks normal" for "this is not
+obfuscated".
+
+**Entropy is bounded by `log2(len)`.** A 16-byte buffer cannot exceed 4 bits per
+byte however random it is. Reading 3.9 as "structured data" when it is the
+arithmetic ceiling is the classic way to misread a small capture, so `Stats`
+carries the ceiling and its saturation, and anything under 64 bytes is
+classified `undersized` — a statement about the measurement, not the content.
+`stats` prints the ceiling whenever the length constrains the answer.
 
 A transition is only **confirmed** when the input was genuinely opaque *and* the
 entropy moved at least a full bit in the direction the rule predicted. Both
@@ -455,7 +499,7 @@ Be clear about this before relying on it.
 
 | Stage | State |
 |-------|-------|
-| `scan`, `deps`, `map`, `stats`, `strings`, `rules`, `plan`, `replay` | **Working.** Exercised against real binaries, 161 tests |
+| `scan`, `deps`, `map`, `stats`, `strings`, `rules`, `plan`, `replay` | **Working.** Exercised against real binaries, 170 tests |
 | Trampoline construction, prologue analysis, buffer capture, trace format | **Working.** Unit tested |
 | Plan rebasing, prologue verification against recorded bytes | **Working.** Unit tested |
 | Process launch and payload injection (`trace`) | **Written, not validated end to end** |
@@ -615,6 +659,17 @@ friendly. Same conventions as Delpheed:
 - **Build-path recovery is heuristic.** Pooled literals have no separator, so a
   leading directory component is occasionally lost — the extractor prefers
   dropping a component to presenting debris as a real path.
+- **Single-byte XOR is invisible to the entropy measures**, provably so. See
+  [The entropy model](#the-entropy-model). A sample that XORs its payload will
+  not stand out by entropy at all.
+- **Exact function boundaries need `.pdata`,** so they are available on PE
+  x86-64 and not on ELF, where `.eh_frame` would have to be parsed instead.
+  Without them the index falls back to inferring starts from call targets, which
+  misses functions that are only reached indirectly.
+- **Every threshold in the entropy model is a hand-chosen guess,** not a fitted
+  value: the 7.0 opaque floor, the 1.0-bit minimum move, the classification
+  bands, the 64-byte meaningfulness cut. They have not been calibrated against a
+  labelled corpus, and nothing in the output claims otherwise.
 
 ---
 
@@ -633,6 +688,16 @@ friendly. Same conventions as Delpheed:
 - **Call-ordering analysis in the report.** A base64 decode whose output becomes
   a cipher's input is the shape of a staged loader; the trace already records
   enough to spot it.
+- **Single-byte XOR recovery.** Chi-square against a *fixed* byte model,
+  brute-forced over all 256 keys by permuting histogram bins — O(256²) per
+  window regardless of window size. The model should be self-calibrated from the
+  sample's own `.text` rather than baked in, since a baked-in frequency table
+  encodes assumptions about compiler and target that Rust samples routinely
+  violate.
+- **`.eh_frame` parsing for ELF,** to give ELF samples the same exact function
+  boundaries `.pdata` already gives PE.
+- **Calibrating the thresholds** against a corpus of already-reversed samples,
+  which would turn the guesses listed under Scope into measurements.
 - **Structural detection for compile-time obfuscators.** `goldberg` leaves
   branch density and entropy that are wrong for compiler output. That needs a
   measurement in `rustid`, not a string anchor.

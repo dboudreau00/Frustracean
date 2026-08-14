@@ -195,6 +195,32 @@ pub mod limits {
     pub const MAX_SYMBOL_NAME: usize = 4096;
 }
 
+/// An exact function extent, recovered from unwind metadata rather than guessed.
+///
+/// This is the most valuable thing a stripped PE still carries. `strip` removes
+/// symbols; it does not remove `.pdata`, because the loader needs it to unwind
+/// exceptions. So a binary with no symbol table at all still tells you where
+/// every function begins and ends - including the one that does the unpacking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FunctionRange {
+    pub start_va: u64,
+    pub end_va: u64,
+}
+
+impl FunctionRange {
+    pub fn contains(&self, va: u64) -> bool {
+        va >= self.start_va && va < self.end_va
+    }
+
+    pub fn len(&self) -> u64 {
+        self.end_va.saturating_sub(self.start_va)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SymbolSource {
@@ -508,6 +534,62 @@ impl Image {
         self.sections
             .iter()
             .filter(|s| !s.executable && s.readable && s.file_size > 0)
+    }
+
+    /// Exact function extents from PE `.pdata`, if this image has any.
+    ///
+    /// `.pdata` on x86-64 is an array of `RUNTIME_FUNCTION`:
+    /// `{ u32 BeginAddress; u32 EndAddress; u32 UnwindInfoAddress; }`, all RVAs,
+    /// sorted ascending by `BeginAddress`.
+    ///
+    /// Records are validated as they are read, and the parse **stops** at the
+    /// first one that fails rather than skipping it. A packer that stuffs junk
+    /// into `.pdata` should yield a short honest list, not a long wrong one -
+    /// and since these ranges are treated as authoritative downstream, a wrong
+    /// entry is worse than a missing one.
+    ///
+    /// Returns empty for ELF, for 32-bit PE (where the record layout differs),
+    /// and for any image without the section.
+    pub fn pdata_functions(&self) -> Vec<FunctionRange> {
+        const RECORD_LEN: usize = 12;
+
+        if self.format != Format::Pe || self.arch != Arch::X86_64 {
+            return Vec::new();
+        }
+        let Some(section) = self.sections.iter().find(|s| s.name == ".pdata") else {
+            return Vec::new();
+        };
+        let range = section.file_range();
+        let Some(raw) = self.data.get(range.start..range.end.min(self.data.len())) else {
+            return Vec::new();
+        };
+
+        let mut out = Vec::with_capacity(raw.len() / RECORD_LEN);
+        let mut last_begin = 0u32;
+        for record in raw.chunks_exact(RECORD_LEN) {
+            let begin = u32::from_le_bytes([record[0], record[1], record[2], record[3]]);
+            let end = u32::from_le_bytes([record[4], record[5], record[6], record[7]]);
+
+            // The conventional terminator, and also what zero padding looks like.
+            if begin == 0 && end == 0 {
+                break;
+            }
+            // An empty or inverted range, or a break in the ascending order,
+            // means this is no longer a real table.
+            if end <= begin || begin < last_begin {
+                break;
+            }
+            last_begin = begin;
+
+            let (Some(start_va), Some(end_va)) = (
+                self.image_base.checked_add(u64::from(begin)),
+                self.image_base.checked_add(u64::from(end)),
+            ) else {
+                break;
+            };
+            out.push(FunctionRange { start_va, end_va });
+        }
+        out
     }
 
     /// Attribute each window of an entropy sweep to its owning section.

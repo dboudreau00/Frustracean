@@ -167,8 +167,17 @@ static RE_RUSTC_VERSION: LazyLock<Regex> = LazyLock::new(|| {
 // The name is lazy so a hyphenated crate such as `curve25519-dalek-4.1.1`
 // splits at the *last* hyphen-then-digit boundary rather than the first.
 static RE_REGISTRY_CRATE: LazyLock<Regex> = LazyLock::new(|| {
+    // The index component is required to have cargo's actual shape -
+    // `<source>-<at least 8 hex digits>`, as in
+    // `index.crates.io-6f17d22bba15001f` or the older
+    // `github.com-1ecc6299db9ec823`.
+    //
+    // Without that constraint the pattern will happily accept any junk between
+    // `registry/src/` and something version-shaped, and `.rodata` supplies junk
+    // in quantity: rustc packs string literals contiguously, so a scan can run
+    // one literal into the next and synthesise a registry that was never there.
     Regex::new(
-        r"(?-u)[/\\]registry[/\\]src[/\\][^/\\]+[/\\]([A-Za-z0-9_][A-Za-z0-9_.-]*?)-(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)[/\\]",
+        r"(?-u)[/\\]registry[/\\]src[/\\][A-Za-z0-9_.-]+-[0-9a-f]{8,}[/\\]([A-Za-z0-9_][A-Za-z0-9_.-]*?)-(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)[/\\]",
     )
     .unwrap()
 });
@@ -624,10 +633,29 @@ mod tests {
 
     #[test]
     fn windows_and_unix_separators_both_parse() {
-        let unix = b"/x/registry/src/idx/serde-1.0.203/src/lib.rs";
-        let win = b"C:\\x\\registry\\src\\idx\\serde-1.0.203\\src\\lib.rs";
+        let unix = b"/x/registry/src/index.crates.io-6f17d22bba15001f/serde-1.0.203/src/lib.rs";
+        let win =
+            b"C:\\x\\registry\\src\\index.crates.io-6f17d22bba15001f\\serde-1.0.203\\src\\lib.rs";
         assert!(detect_bytes(unix, 5.0).find_crate("serde").is_some());
         assert!(detect_bytes(win, 5.0).find_crate("serde").is_some());
+    }
+
+    #[test]
+    fn the_older_github_registry_index_still_parses() {
+        let data = b"/x/registry/src/github.com-1ecc6299db9ec823/libc-0.2.153/src/lib.rs";
+        assert!(detect_bytes(data, 5.0).find_crate("libc").is_some());
+    }
+
+    #[test]
+    fn a_registry_index_without_cargos_hash_shape_is_rejected() {
+        // Pooled literals can put almost anything between `registry/src/` and
+        // something version-shaped. A real cargo index is always
+        // `<source>-<>=8 hex>`; anything else is a phantom.
+        let data = b"/x/registry/src/notanindex/serde-1.0.203/src/lib.rs";
+        assert!(
+            detect_bytes(data, 5.0).find_crate("serde").is_none(),
+            "a malformed index component must not yield a crate"
+        );
     }
 
     #[test]
@@ -738,8 +766,8 @@ mod tests {
 
     #[test]
     fn third_party_crates_exclude_the_toolchains_own() {
-        let data = b"/x/registry/src/idx/reqwest-0.12.4/src/lib.rs\
-                     /x/registry/src/idx/miniz_oxide-0.7.2/src/lib.rs";
+        let data = b"/x/registry/src/index.crates.io-6f17d22bba15001f/reqwest-0.12.4/src/lib.rs\
+                     /x/registry/src/index.crates.io-6f17d22bba15001f/miniz_oxide-0.7.2/src/lib.rs";
         let p = detect_bytes(data, 5.0);
         let names: Vec<&str> = p.third_party_crates().map(|c| c.name.as_str()).collect();
         assert_eq!(names, vec!["reqwest"]);

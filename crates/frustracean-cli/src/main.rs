@@ -659,6 +659,28 @@ fn cmd_stats(o: &Out, a: StatsArgs) -> i32 {
         }
         entropy::Class::Structured => o.item("Low entropy: tables, relocations, or sparse data."),
         entropy::Class::Padding => o.item("One or two distinct byte values: alignment or fill."),
+        entropy::Class::Undersized => {
+            o.item("Too short for entropy to mean much on its own.");
+            o.item(format!(
+                "At {} bytes the ceiling is {:.2} bits/byte, and this sits at {:.0}% of it.",
+                stats.len,
+                stats.ceiling(),
+                stats.saturation() * 100.0
+            ));
+        }
+    }
+
+    // Worth saying for any buffer whose length constrains the answer, not only
+    // the ones short enough to be classified as undersized.
+    if stats.is_undersized() || stats.ceiling() < entropy::MAX_ENTROPY {
+        o.field(
+            "Entropy ceiling",
+            format!(
+                "{:.2} bits/byte at this length ({:.0}% saturated)",
+                stats.ceiling(),
+                stats.saturation() * 100.0
+            ),
+        );
     }
     exit::OK
 }
@@ -896,6 +918,20 @@ fn cmd_plan(o: &Out, a: PlanArgs) -> i32 {
 
     o.field("File", image.path.display());
     o.field("Functions indexed", index.function_starts.len());
+    if index.exact_range_count() > 0 {
+        o.field(
+            "Exact extents",
+            format!(
+                "{} from unwind metadata (.pdata)",
+                index.exact_range_count()
+            ),
+        );
+    } else {
+        o.field(
+            "Exact extents",
+            "none; boundaries inferred from call targets",
+        );
+    }
     o.field("Calling convention", built.abi.label());
     o.field("Targets", built.targets.len());
     o.field("Skipped", built.skipped.len());

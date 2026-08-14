@@ -37,11 +37,21 @@ use frustracean_core::plan::HijackPlan;
 
 use crate::out::{exit, Out};
 
+// Everything from here to `run` exists only to serve the Windows
+// implementation. On other platforms it is genuinely dead, and CI builds with
+// `-D warnings`, so it is gated rather than left to rot behind an `allow`.
+//
+// The string helpers are `any(windows, test)`: their behaviour is pure logic
+// worth testing everywhere, even though only Windows calls them.
+
 /// Environment variables the payload reads on attach.
+#[cfg(windows)]
 pub const ENV_PLAN: &str = "FRUSTRACEAN_PLAN";
+#[cfg(windows)]
 pub const ENV_OUT: &str = "FRUSTRACEAN_OUT";
 
 /// How long to wait for the payload's `DllMain` to finish attaching.
+#[cfg(windows)]
 const ATTACH_TIMEOUT_MS: u32 = 30_000;
 
 /// Quote one argument for a Windows command line.
@@ -58,6 +68,7 @@ const ATTACH_TIMEOUT_MS: u32 = 30_000;
 /// This matters here beyond tidiness. The arguments after `--` are analyst input
 /// aimed at a malware sample, and an argument that silently merges with the next
 /// one changes what the sample is asked to do.
+#[cfg(any(windows, test))]
 fn quote_argument(arg: &str) -> String {
     if !arg.is_empty() && !arg.contains([' ', '\t', '"', '\\']) {
         return arg.to_string();
@@ -100,6 +111,7 @@ fn quote_argument(arg: &str) -> String {
 }
 
 /// Build the full command line for the sample and its pass-through arguments.
+#[cfg(any(windows, test))]
 fn build_command_line(sample: &Path, args: &[String]) -> String {
     let mut line = quote_argument(&sample.display().to_string());
     for arg in args {
@@ -110,6 +122,7 @@ fn build_command_line(sample: &Path, args: &[String]) -> String {
 }
 
 /// Locate `frustracean_hook.dll`: the flag, then beside this executable.
+#[cfg(windows)]
 pub fn resolve_payload(explicit: Option<&Path>) -> Option<std::path::PathBuf> {
     if let Some(p) = explicit {
         return p.is_file().then(|| p.to_path_buf());

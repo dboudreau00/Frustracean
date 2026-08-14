@@ -21,7 +21,17 @@ deliberately unimplemented. See the build-status table in the README.
   packed blob.
 - **Entropy mapping** (`map`, `stats`) — windowed Shannon entropy with
   chi-square and printable-ratio corroborators, so compressed data can be told
-  from ciphertext rather than lumped together as "high entropy".
+  from ciphertext rather than lumped together as "high entropy". Buffers under
+  64 bytes are classified `undersized` rather than given a confident label,
+  since entropy is bounded by `log2(len)` and a 16-byte buffer cannot exceed 4
+  bits per byte however random it is; `Stats` carries the ceiling and its
+  saturation.
+- **Exact function boundaries from PE `.pdata`** — `strip` removes symbols but
+  cannot remove unwind metadata, because the loader needs it. Parsing the
+  `RUNTIME_FUNCTION` array gives precise start and end addresses for every
+  function in a stripped x86-64 PE. On the bundled testbed this lifts recovery
+  from 248 inferred function starts to 469, of which 413 are exact, and stops an
+  address in inter-function padding being attributed to the function before it.
 - **Hijack planning** (`plan`) — resolves signature rules against an image by
   symbol, or by RIP-relative string cross-reference when the image is stripped.
   Maps logical Rust arguments onto ABI slots, checks each site's prologue is
@@ -60,6 +70,19 @@ fixed before publication. Each has a regression test.
 - The code index could grow without bound on a crafted section table.
 - A symbol pointing into `.rodata` could become a hook target, because constant
   data decodes into plausible-looking instructions.
+
+### Documented
+
+- **Neither Shannon entropy nor chi-square against a uniform model can detect a
+  single-byte XOR.** XOR permutes the histogram's bins without changing the
+  multiset of bin counts, and both measures are functions of those counts alone,
+  so both are exactly invariant. This is now asserted as a test over all 255
+  keys and stated in the README rather than left for a user to discover. Of the
+  three measures only the printable ratio moves, and it moves monotonically with
+  the key's magnitude, which is why it cannot stand alone.
+- Every threshold in the entropy model is recorded as a hand-chosen guess rather
+  than a fitted value, because none has been calibrated against a labelled
+  corpus.
 
 ### Fixed
 

@@ -207,6 +207,13 @@ pub struct CodeIndex {
     /// Set when a [`limits`] ceiling stopped the sweep early, so the caller can
     /// say that coverage was capped instead of implying it was complete.
     pub truncated: Option<String>,
+    /// Exact function extents from unwind metadata, keyed by start address.
+    ///
+    /// When this is populated the index is not guessing. `.pdata` survives
+    /// `strip`, because the loader needs it, so a binary with no symbols at all
+    /// can still yield precise boundaries - and precision here is what stops a
+    /// string cross-reference being attributed to the wrong function.
+    pub exact_ranges: BTreeMap<u64, u64>,
 }
 
 impl CodeIndex {
@@ -222,12 +229,20 @@ impl CodeIndex {
 
         let mut truncated: Option<String> = None;
 
+        // Unwind metadata first: these are exact, and they survive stripping.
+        let mut exact_ranges: BTreeMap<u64, u64> = BTreeMap::new();
+        for range in image.pdata_functions() {
+            exact_ranges.insert(range.start_va, range.end_va);
+            function_starts.insert(range.start_va);
+        }
+
         let Some(bitness) = image.arch.decoder_bitness() else {
             return CodeIndex {
-                function_starts: Vec::new(),
+                function_starts: function_starts.into_iter().collect(),
                 xrefs,
                 decode_failures: 0,
                 truncated: None,
+                exact_ranges,
             };
         };
 
@@ -297,23 +312,51 @@ impl CodeIndex {
             xrefs,
             decode_failures,
             truncated,
+            exact_ranges,
         }
     }
 
     /// The function containing `va`: the greatest known start at or below it.
+    ///
+    /// When an exact extent is known for that start, the address must actually
+    /// fall inside it. Without that check an address in the padding between two
+    /// functions is silently attributed to the one before it, which is how a
+    /// string cross-reference ends up naming the wrong function.
     pub fn enclosing_function(&self, va: u64) -> Option<u64> {
-        match self.function_starts.binary_search(&va) {
-            Ok(i) => Some(self.function_starts[i]),
-            Err(0) => None,
-            Err(i) => Some(self.function_starts[i - 1]),
+        let start = match self.function_starts.binary_search(&va) {
+            Ok(i) => self.function_starts[i],
+            Err(0) => return None,
+            Err(i) => self.function_starts[i - 1],
+        };
+        match self.exact_ranges.get(&start) {
+            Some(&end) if va >= end => None,
+            _ => Some(start),
         }
     }
 
-    /// Where the function starting at `start` is assumed to end: the next known
-    /// start. An over-estimate is harmless for the uses here.
+    /// Where the function starting at `start` ends.
+    ///
+    /// Exact when unwind metadata covers it; otherwise the next known start,
+    /// which over-estimates. Over-estimating is safe for the uses here - it
+    /// widens the scan for branches into the patch region - but knowing which
+    /// answer you got matters, so [`CodeIndex::has_exact_range`] reports it.
     pub fn function_end(&self, start: u64) -> Option<u64> {
+        if let Some(&end) = self.exact_ranges.get(&start) {
+            return Some(end);
+        }
         let i = self.function_starts.binary_search(&start).ok()?;
         self.function_starts.get(i + 1).copied()
+    }
+
+    /// Whether this function's extent came from unwind metadata rather than
+    /// from the address of the next thing along.
+    pub fn has_exact_range(&self, start: u64) -> bool {
+        self.exact_ranges.contains_key(&start)
+    }
+
+    /// How many function extents are exact rather than inferred.
+    pub fn exact_range_count(&self) -> usize {
+        self.exact_ranges.len()
     }
 
     /// Addresses that reference `target` through a RIP-relative operand.
@@ -417,12 +460,51 @@ mod tests {
     }
 
     #[test]
+    fn an_exact_extent_stops_padding_being_attributed_to_the_function_before_it() {
+        // 0x1000 is known to end at 0x1080. Address 0x1100 sits in the gap
+        // before 0x2000 - it belongs to no function, and saying otherwise is
+        // how a cross-reference gets pinned on the wrong one.
+        let mut exact = BTreeMap::new();
+        exact.insert(0x1000u64, 0x1080u64);
+        let idx = CodeIndex {
+            function_starts: vec![0x1000, 0x2000],
+            xrefs: BTreeMap::new(),
+            decode_failures: 0,
+            truncated: None,
+            exact_ranges: exact,
+        };
+        assert_eq!(idx.enclosing_function(0x1040), Some(0x1000));
+        assert_eq!(idx.enclosing_function(0x1100), None);
+        assert_eq!(
+            idx.function_end(0x1000),
+            Some(0x1080),
+            "exact, not the next start"
+        );
+        assert!(idx.has_exact_range(0x1000));
+        assert!(!idx.has_exact_range(0x2000));
+    }
+
+    #[test]
+    fn without_an_exact_extent_the_next_start_is_used() {
+        let idx = CodeIndex {
+            function_starts: vec![0x1000, 0x2000],
+            xrefs: BTreeMap::new(),
+            decode_failures: 0,
+            truncated: None,
+            exact_ranges: BTreeMap::new(),
+        };
+        assert_eq!(idx.enclosing_function(0x1900), Some(0x1000));
+        assert_eq!(idx.function_end(0x1000), Some(0x2000));
+    }
+
+    #[test]
     fn enclosing_function_picks_the_greatest_start_at_or_below() {
         let idx = CodeIndex {
             function_starts: vec![0x1000, 0x2000, 0x3000],
             xrefs: BTreeMap::new(),
             decode_failures: 0,
             truncated: None,
+            exact_ranges: BTreeMap::new(),
         };
         assert_eq!(idx.enclosing_function(0x2000), Some(0x2000));
         assert_eq!(idx.enclosing_function(0x2abc), Some(0x2000));

@@ -9,7 +9,7 @@
 <g font-family="ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" xml:space="preserve">
 <text x="18" y="58"><tspan fill="#4FB3A7" font-weight="600">$</tspan><tspan fill="#E6EDF5"> frustracean scan sample.exe</tspan></text>
 <text x="18" y="100"><tspan fill="#C7D0DC">﻿File: .\target\release\frustracean-testbed.exe</tspan></text>
-<text x="18" y="121"><tspan fill="#8FA0B4">SHA256:</tspan><tspan fill="#E6EDF5"> 1b175ba679009d0f59c4f112d8f4d251d54e9f26903e28d0b2f44ecdda9917cf</tspan></text>
+<text x="18" y="121"><tspan fill="#8FA0B4">SHA256:</tspan><tspan fill="#E6EDF5"> ed36a41bfbaa79eb3b718c2c2edc80f70871a16a749e9f85b75c598f1a7b19bd</tspan></text>
 <text x="18" y="142"><tspan fill="#8FA0B4">Size:</tspan><tspan fill="#E6EDF5"> 194.50 KiB (199168 bytes)</tspan></text>
 <text x="18" y="163"><tspan fill="#8FA0B4">Format:</tspan><tspan fill="#E6EDF5"> PE</tspan></text>
 <text x="18" y="184"><tspan fill="#8FA0B4">Architecture:</tspan><tspan fill="#E6EDF5"> x86-64 (64-bit)</tspan></text>

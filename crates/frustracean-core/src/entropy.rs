@@ -12,6 +12,28 @@
 //! * **printable ratio**, which pulls UTF-8 blobs (very common in Rust binaries,
 //!   whose string literals are length-prefixed rather than NUL-terminated and so
 //!   run together into long printable stretches) out of the "data" bucket.
+//!
+//! # Two limits worth knowing before trusting a number here
+//!
+//! **Neither entropy nor chi-square can see a single-byte XOR.** XOR permutes the
+//! histogram's bins; it does not change the multiset of bin counts. Shannon
+//! entropy is a function of the counts alone, and chi-square against a *uniform*
+//! model compares every count to the same expected value, so both are exactly
+//! invariant. This is asserted as a test, not merely asserted here. Of the three
+//! measures only the printable ratio moves at all under XOR, and it moves
+//! monotonically with the key's magnitude - a key of `0x01` leaves printability
+//! at 1.0 - which makes it useless as a standalone discriminator.
+//!
+//! Detecting single-byte XOR needs chi-square against a *fixed* byte model rather
+//! than a uniform one, brute-forced over all 256 keys. Frustracean does not do
+//! that yet; see the roadmap. What matters for now is not mistaking "high
+//! entropy" for "not XORed".
+//!
+//! **Entropy is bounded by `log2(len)`.** A 16-byte buffer cannot exceed 4 bits
+//! per byte no matter how random it is. Reading 3.9 as "structured data" when it
+//! is in fact the arithmetic ceiling for that length is the classic way to
+//! misread a small capture, so [`Stats`] carries the ceiling and short buffers
+//! are classified [`Class::Undersized`] rather than given a confident label.
 
 use serde::{Deserialize, Serialize};
 
@@ -100,10 +122,18 @@ pub fn distinct_bytes(data: &[u8]) -> usize {
     n
 }
 
+/// Below this many bytes, an entropy value says more about the length than the
+/// content: the ceiling is `log2(len)`, so a 32-byte buffer tops out at 5 bits
+/// per byte however random it is.
+pub const MIN_MEANINGFUL_LEN: usize = 64;
+
 /// What a run of bytes most likely is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Class {
+    /// Too short for its entropy to carry information. Not a judgement about
+    /// the content - a judgement about the measurement.
+    Undersized,
     /// All one byte, or nearly so: alignment padding, zeroed BSS, `int3` fill.
     Padding,
     /// Printable text. In a Rust image this is usually the `.rodata` string pool.
@@ -122,6 +152,7 @@ impl Class {
     /// A word, not a colour. Used directly in CLI output.
     pub fn label(self) -> &'static str {
         match self {
+            Class::Undersized => "undersized",
             Class::Padding => "padding",
             Class::Text => "text",
             Class::Code => "code",
@@ -168,6 +199,38 @@ impl Stats {
     pub fn chi_square_ratio(self) -> f64 {
         self.chi_square / 255.0
     }
+
+    /// The highest entropy a buffer of this length could reach, `log2(len)`
+    /// capped at 8.
+    ///
+    /// Worth printing next to the measurement whenever the buffer is small: an
+    /// entropy of 4.0 means something very different at 16 bytes (the ceiling)
+    /// than at 16 KiB.
+    pub fn ceiling(self) -> f64 {
+        if self.len == 0 {
+            0.0
+        } else {
+            (self.len as f64).log2().min(MAX_ENTROPY)
+        }
+    }
+
+    /// Is this buffer too short for its entropy to be interpreted?
+    pub fn is_undersized(self) -> bool {
+        self.len < MIN_MEANINGFUL_LEN
+    }
+
+    /// How close the measurement sits to its own arithmetic ceiling, in `0..=1`.
+    ///
+    /// A short buffer pressed against its ceiling is as random as it is able to
+    /// be, which is the most that can honestly be said about it.
+    pub fn saturation(self) -> f64 {
+        let ceiling = self.ceiling();
+        if ceiling <= 0.0 {
+            0.0
+        } else {
+            (self.entropy / ceiling).clamp(0.0, 1.0)
+        }
+    }
 }
 
 /// Bucket a buffer from its summary statistics.
@@ -177,6 +240,12 @@ impl Stats {
 pub fn classify(len: usize, entropy: f64, chi: f64, printable: f64, distinct: usize) -> Class {
     if len == 0 || distinct <= 2 {
         return Class::Padding;
+    }
+    // A short buffer's entropy is capped at log2(len), so every band below
+    // would be reading the length rather than the content. Padding is decided
+    // first because "all one byte" is true at any size.
+    if len < MIN_MEANINGFUL_LEN {
+        return Class::Undersized;
     }
     if printable > 0.90 && entropy < 6.0 {
         return Class::Text;
@@ -460,6 +529,84 @@ mod tests {
         assert_eq!(Stats::of(&[0u8; 1024]).class, Class::Padding);
         let text = b"the quick brown fox jumps over the lazy dog. ".repeat(32);
         assert_eq!(Stats::of(&text).class, Class::Text);
+    }
+
+    #[test]
+    fn neither_entropy_nor_chi_square_can_see_a_single_byte_xor() {
+        // XOR permutes the histogram's bins. It does not change the multiset of
+        // bin counts - and both measures are functions of the counts alone, so
+        // both are exactly invariant. Anything claiming to detect XOR by
+        // entropy is wrong, and this is the proof for all 255 keys.
+        let data: Vec<u8> = (0..4096u32)
+            .map(|i| b"the quick brown fox jumps over the lazy dog"[(i as usize) % 42])
+            .collect();
+        let h = shannon(&data);
+        let c = chi_square(&data);
+
+        for key in 1..=255u8 {
+            let xored: Vec<u8> = data.iter().map(|b| b ^ key).collect();
+            assert!(
+                (shannon(&xored) - h).abs() < 1e-12,
+                "entropy moved under key {key:#04x}"
+            );
+            assert!(
+                (chi_square(&xored) - c).abs() < 1e-9,
+                "chi-square moved under key {key:#04x}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_printable_ratio_is_the_only_measure_xor_moves_at_all() {
+        // And it moves monotonically with the key's magnitude rather than
+        // collapsing, which is exactly why it cannot stand alone: a key of 0x01
+        // leaves printability untouched.
+        let text = b"the quick brown fox jumps over the lazy dog. ".repeat(32);
+        assert!((printable_ratio(&text) - 1.0).abs() < 1e-12);
+
+        let low: Vec<u8> = text.iter().map(|b| b ^ 0x01).collect();
+        assert!(
+            printable_ratio(&low) > 0.99,
+            "a low key barely disturbs printability"
+        );
+
+        let high: Vec<u8> = text.iter().map(|b| b ^ 0x80).collect();
+        assert!(
+            printable_ratio(&high) < 0.01,
+            "a high key clears the top bit and destroys it"
+        );
+    }
+
+    #[test]
+    fn entropy_is_bounded_by_the_log_of_the_length() {
+        // 16 distinct random-looking bytes cannot exceed 4 bits per byte. Read
+        // as an absolute number that looks like "structured data"; read against
+        // the ceiling it is maximal randomness.
+        let data: Vec<u8> = (0..16u8).collect();
+        let stats = Stats::of(&data);
+        assert!((stats.ceiling() - 4.0).abs() < 1e-12);
+        assert!((stats.entropy - 4.0).abs() < 1e-12);
+        assert!((stats.saturation() - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn short_buffers_are_labelled_undersized_rather_than_guessed_at() {
+        let data: Vec<u8> = (0..32u8).collect();
+        let stats = Stats::of(&data);
+        assert!(stats.is_undersized());
+        assert_eq!(stats.class, Class::Undersized);
+
+        // The same byte pattern, long enough to mean something, is not.
+        let long: Vec<u8> = (0..=255u8).cycle().take(4096).collect();
+        assert!(!Stats::of(&long).is_undersized());
+        assert_ne!(Stats::of(&long).class, Class::Undersized);
+    }
+
+    #[test]
+    fn an_all_one_byte_buffer_is_padding_at_any_length() {
+        // The padding check has to come before the length check, or a 16-byte
+        // run of zeroes gets reported as "too short to say".
+        assert_eq!(Stats::of(&[0u8; 8]).class, Class::Padding);
     }
 
     #[test]
