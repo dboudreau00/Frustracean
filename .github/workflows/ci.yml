@@ -79,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install the declared MSRV
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@1.100.0
       - uses: Swatinem/rust-cache@v2
       # Checked rather than tested: the point is that the declared
       # `rust-version` in Cargo.toml is true, not that the suite passes twice.
