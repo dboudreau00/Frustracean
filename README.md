@@ -6,7 +6,7 @@
   <a href="https://github.com/dboudreau00/Frustracean/actions/workflows/ci.yml"><img src="https://github.com/dboudreau00/Frustracean/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/rust-1.85%2B-b7410e" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
-  <img src="https://img.shields.io/badge/tests-170-brightgreen" alt="170 tests">
+  <img src="https://img.shields.io/badge/tests-177-brightgreen" alt="177 tests">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey" alt="Windows and Linux">
 </p>
 
@@ -179,9 +179,10 @@ Three binaries come out:
 | `frustracean_hook.dll` | The injected payload |
 | `frustracean-testbed` | A benign sample that packs and unpacks itself |
 
-Hook installation sits behind an off-by-default `detour` feature. The crate
-builds without it, and `install` refuses with an explanation rather than
-silently doing nothing.
+The Windows x86-64 `detour` feature is enabled by default so `frustracean_hook.dll`
+captures live calls out of the box. Building `frustracean-hook` with
+`--no-default-features` compiles the stubbed payload without inline detours, and
+refuses installation cleanly rather than silently doing nothing.
 
 ---
 
@@ -263,25 +264,31 @@ Two `plan` flags change what gets resolved:
 ### Dynamic — this one runs the malware
 
 ```
-frustracean trace <plan.json> --sample <exe> --sandboxed
-                  [--out DIR] [--payload DLL] [--timeout SECS]
+frustracean trace [plan.json] --sample <exe> --sandboxed
+                  [--signatures DIR] [--no-xrefs]
+                  [--out DIR] [--payload DLL] [--timeout SECS] [--replay]
                   [-- <args passed to the sample>]
 ```
 
-Windows only. See [Running a sample](#running-a-sample).
+When `<plan.json>` is omitted, `trace` plans against `--sample` automatically into
+`<out>/plan.json` (after confirming `--sandboxed`). Pass `--replay` to correlate the
+captured trace immediately and write `<out>/report.md`. Windows only. See
+[Running a sample](#running-a-sample).
 
 ### A typical session
 
 ```bash
 frustracean scan suspicious.exe
+frustracean deps suspicious.exe
+frustracean trace --sample suspicious.exe --sandboxed --replay --out capture
 ```
 
-```bash
-frustracean deps suspicious.exe
-```
+Or step-by-step when you want to audit and edit the plan before execution:
 
 ```bash
 frustracean plan suspicious.exe --out plan.json
+frustracean trace plan.json --sample suspicious.exe --sandboxed --out capture
+frustracean replay capture/trace.jsonl --plan plan.json --out report.md
 ```
 
 ---
@@ -468,10 +475,10 @@ unpacks itself:
   plaintext config     4.57 bits/byte
 ```
 
-It exists because the one unfinished piece of this project — the detour stub —
-cannot be brought up against real malware. You need a target whose correct
-output you already know, so that when a hook fires you can tell the difference
-between *captured the buffer* and *corrupted the process*.
+It exists because the detour engine cannot be brought up against real malware.
+You need a target whose correct output you already know, so that when a hook
+fires you can tell the difference between *captured the buffer* and *corrupted
+the process*.
 
 It is also two targets in one. Built as a **cdylib** it exports named symbols,
 so rules resolve by `symbol_regex`. Built as an **executable** it is MSVC-linked
@@ -499,38 +506,32 @@ Be clear about this before relying on it.
 
 | Stage | State |
 |-------|-------|
-| `scan`, `deps`, `map`, `stats`, `strings`, `rules`, `plan`, `replay` | **Working.** Exercised against real binaries, 170 tests |
+| `scan`, `deps`, `map`, `stats`, `strings`, `rules`, `plan`, `replay` | **Working.** Exercised against real binaries, 177 tests across the workspace |
 | Trampoline construction, prologue analysis, buffer capture, trace format | **Working.** Unit tested |
 | Plan rebasing, prologue verification against recorded bytes | **Working.** Unit tested |
-| Process launch and payload injection (`trace`) | **Written, not validated end to end** |
-| The detour stub that fires on each hooked call | **Not implemented** |
+| Process launch and payload injection (`trace`) | **Working on Windows x86-64.** Verifies remote `LoadLibraryW` status and payload trace; validated end-to-end against `frustracean-testbed.exe` |
+| Wrapped-call detour engine (`detour` feature, default on) | **Working on Windows x86-64.** Near-jump RX slabs, Win64 register/stack/`sret` capture, TLS frame stack, re-entrancy guard, `LastError` preservation |
 
-So: the static half is real and usable today. The dynamic half will resolve a
-plan against a live process, rebase it, verify every prologue still matches, and
-tell you exactly what it found — but it will not yet capture calls, because the
-detour stub is deliberately not faked.
+The static and dynamic pipeline is wired end-to-end on Windows x86-64. In-process
+self-hook tests and live `frustracean trace` runs against stripped
+`frustracean-testbed.exe` (both debug and release builds) recover the exact stage-1
+and stage-2 plaintext buffers byte-for-byte.
 
-Hand-written machine code running inside a hostile process cannot be validated by
-writing it confidently; it needs bring-up against a benign target under a
-debugger. `crates/frustracean-hook/src/detour.rs` documents the full design,
-including the three things that make it harder than it looks:
+`crates/frustracean-hook/src/detour.rs` documents the wrapped-call detour design,
+including the constraints on inline hooking in an untrusted process:
 
-1. **Stack discipline.** The detour is reached by `jmp`, so `rsp` still holds
-   what the function expected. Before calling the trampoline it must pop the
-   return address away and re-establish `rsp` so the `call` pushes into the same
-   slot — otherwise every stack argument the function reads is off by one.
-2. **The saved context cannot live on the stack.** Once the trampoline is
-   called, the function owns everything below the original `rsp`, including any
-   frame built there. It has to be parked in thread-local storage — which also
-   makes the design naturally reentrant, since two threads can be inside one
-   hooked function at once.
-3. **Reentrancy into our own capture path.** Capture allocates, hashes, and
-   writes to disk. If the hooked function is reachable from inside the
-   allocator, the stub must detect re-entry and skip rather than recurse.
-
-`docs/examples/testbed-trace.jsonl` is the acceptance criterion for that work:
-a trace in the exact schema the payload must emit, populated with the fixture's
-real measurements.
+1. **Stack discipline.** The detour pre-stub enters via a 5-byte `jmp rel32` into
+   `frustracean_detour_dispatch`, aligns a local save frame while leaving the
+   caller's `[orig_rsp + 8..]` stack arguments untouched, and swaps the trampoline
+   and hook return addresses so the callee observes the exact original entry ABI.
+2. **Thread-local saved context.** Once the trampoline runs, the target function
+   owns the stack below caller return. Active call metadata and pre-call buffer
+   descriptors sit on a per-thread `Vec` stack allocated behind a Win32 `TlsAlloc`
+   slot, supporting nested and multi-threaded hooked calls.
+3. **Reentrancy guard & `LastError` preservation.** Setting TLS state cleanly
+   with sentinel guards avoids triggering Rust `std::thread_local!` destructors
+   or recursion from inside capture, while `LastErrorGuard` preserves TEB `GetLastError`
+   so tracing does not alter target error handling.
 
 ---
 
@@ -588,7 +589,7 @@ None of this is containment. Nothing in this tool sandboxes anything.
 | `crates/frustracean-cli/src/inject.rs` | Suspended launch and payload injection |
 | `crates/frustracean-hook/src/trampoline.rs` | Stolen-byte relocation and patch encoding |
 | `crates/frustracean-hook/src/capture.rs` | Buffer clamping, content-addressed dumps, trace writing |
-| `crates/frustracean-hook/src/detour.rs` | Plan rebasing, prologue verification; the stub's design |
+| `crates/frustracean-hook/src/detour.rs` | Plan rebasing, prologue verification, and Win64 wrapped-call detour engine |
 | `crates/frustracean-testbed/` | Benign self-unpacking sample |
 | `signatures/*.yaml` | The rule catalogue |
 | `docs/examples/` | A real plan and a reference trace |
@@ -675,9 +676,6 @@ friendly. Same conventions as Delpheed:
 
 ## Roadmap
 
-- **The detour stub.** The remaining piece: a wrapped-call detour with a
-  per-thread frame stack in TLS and a re-entrancy guard, brought up against the
-  bundled testbed under a debugger.
 - **Debugger-based injection.** Attaching with `DEBUG_ONLY_THIS_PROCESS` and
   injecting at the initial breakpoint would land hooks ahead of the sample's TLS
   callbacks, which the current approach cannot.

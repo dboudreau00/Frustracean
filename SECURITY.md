@@ -39,6 +39,8 @@ why.
   analyst named.
 - A signature rule whose argument model causes the payload to read memory the
   rule did not describe.
+- The payload writing anywhere other than the stub slabs and the prologue
+  patches that a verified plan describes.
 - Vulnerabilities in how this project uses `goblin`, `regex`, `iced-x86`,
   `serde_yaml`, or `windows-sys`. Report issues *inside* those crates upstream,
   but tell us too if this project's usage is what exposes them.
@@ -52,9 +54,6 @@ why.
   unpack, or exits early is doing its job. That is an arms race, not a security
   bug — open a normal issue.
 - **Anything requiring the attacker to already control the analyst's machine.**
-- **The `detour` feature.** Hook installation is unimplemented and disabled by
-  default; see `crates/frustracean-hook/src/detour.rs`. Bugs in code that
-  refuses to run are not exploitable.
 
 ## Operating guidance
 

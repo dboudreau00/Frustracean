@@ -34,15 +34,15 @@ dumps. Regenerate them yourself and they will match.
 
 The **plan** is genuine output — `frustracean plan` produced it.
 
-The **trace** is hand-authored, because the detour stub that would produce it is
-not implemented yet (see `crates/frustracean-hook/src/detour.rs`). It is not an
-illustration, though: it is written to the same schema the payload emits, parsed
-by the same code, and populated with the fixture's real measurements. When the
-stub is brought up against the testbed, its output should match this file
-modulo addresses, timings, and thread ids.
+The **trace** is hand-authored; it was written before the detour engine in
+`crates/frustracean-hook/src/detour.rs` existed. It is not an illustration,
+though: it is written to the same schema the payload emits, parsed by the same
+code, and populated with the fixture's real measurements. The output of a live
+`frustracean trace` against the testbed should match this file modulo addresses,
+timings, and thread ids.
 
-That makes this trace the acceptance criterion for the remaining work, which is
-why it is checked in rather than generated.
+That makes this trace the reference a live run is compared against, which is why
+it is checked in rather than generated.
 
 ## Portability
 
