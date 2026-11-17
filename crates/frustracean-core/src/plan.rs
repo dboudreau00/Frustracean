@@ -329,16 +329,16 @@ pub fn build(
             let mut per_function: BTreeMap<u64, AnchorEvidence> = BTreeMap::new();
 
             for needle in &rule.match_spec.strings {
-                for hit_va in find_string_vas(image, needle.as_bytes()) {
-                    let lo = hit_va.saturating_sub(XREF_BACKSCAN);
-                    let hi = hit_va.saturating_add(needle.len() as u64);
-                    // `BTreeMap::range` panics on an inverted range, and unlike
-                    // an arithmetic overflow that one fires in release builds
-                    // too. A crafted section VA can put a hit near u64::MAX.
-                    if lo > hi {
+                for (hit_va, printable_lo) in find_string_hits(image, needle.as_bytes()) {
+                    // `index.xrefs` maps referenced constant addresses -> referencing instructions.
+                    // Walking backwards along contiguous printable bytes and stopping at the nearest
+                    // enclosing xref respects Rust's NUL-less string pooling: an earlier pooled
+                    // literal sitting right before `hit_va` must not steal this anchor's matches.
+                    let lo = hit_va.saturating_sub(XREF_BACKSCAN).max(printable_lo);
+                    if lo > hit_va {
                         continue;
                     }
-                    for (&target_va, refs) in index.xrefs.range(lo..=hi) {
+                    if let Some((&target_va, refs)) = index.xrefs.range(lo..=hit_va).next_back() {
                         for &from in refs {
                             if let Some(func) = index.enclosing_function(from) {
                                 let entry = per_function.entry(func).or_default();
@@ -573,13 +573,15 @@ pub fn inspect_site(image: &Image, index: &CodeIndex, func_va: u64) -> PrologueR
     report
 }
 
-/// Every virtual address at which `needle` appears in a readable data section.
+/// Every virtual address at which `needle` appears in a readable data section,
+/// paired with the earliest contiguous printable VA before it (within the same section).
 #[cfg(feature = "analysis")]
-fn find_string_vas(image: &Image, needle: &[u8]) -> Vec<u64> {
+fn find_string_hits(image: &Image, needle: &[u8]) -> Vec<(u64, u64)> {
     let mut out = Vec::new();
     if needle.is_empty() {
         return out;
     }
+    let is_string_byte = |b: u8| matches!(b, b'\t' | b'\n' | b'\r' | 0x20..=0x7e | 0x80..=0xff);
     for section in image.data_sections() {
         let range = section.file_range();
         let Some(bytes) = image.data.get(range.start..range.end.min(image.data.len())) else {
@@ -589,7 +591,13 @@ fn find_string_vas(image: &Image, needle: &[u8]) -> Vec<u64> {
         while i + needle.len() <= bytes.len() {
             if &bytes[i..i + needle.len()] == needle {
                 if let Some(va) = section.va.checked_add(i as u64) {
-                    out.push(va);
+                    let max_back = i.min(XREF_BACKSCAN as usize);
+                    let mut back = 0usize;
+                    while back < max_back && is_string_byte(bytes[i - back - 1]) {
+                        back += 1;
+                    }
+                    let printable_lo = va - back as u64;
+                    out.push((va, printable_lo));
                 }
                 i += needle.len();
             } else {
@@ -970,6 +978,90 @@ rules:
             assert_eq!(plan.targets.len(), 1, "one address, one hook");
             assert_eq!(plan.skipped.len(), 1);
             assert!(plan.skipped[0].reasons[0].contains("already hooked"));
+        }
+
+        #[test]
+        fn adjacent_pooled_literals_without_nul_do_not_bleed_across_rules() {
+            let mut data = vec![0u8; 0x300];
+            // func1 @ 0x1000 references STRING_ONE (VA 0x2000), calls func2, returns
+            // func2 @ 0x1020 references STRING_TWO (VA 0x200a, immediately after STRING_ONE with NO NUL)
+            // 0x1000: lea rax, [rip+0xff9] -> 0x2000
+            // 0x1007: call 0x1020          -> 0x1020 - 0x100c = 0x14
+            // 0x100c: ret
+            // 0x1020: lea rax, [rip+0xfe3] -> 0x200a (next ip 0x1027)
+            let code1: &[u8] = &[
+                0x48, 0x8d, 0x05, 0xf9, 0x0f, 0x00, 0x00, 0xe8, 0x14, 0x00, 0x00, 0x00, 0xc3,
+            ];
+            let code2: &[u8] = &[0x48, 0x8d, 0x05, 0xe3, 0x0f, 0x00, 0x00, 0xc3];
+            data[..code1.len()].copy_from_slice(code1);
+            data[code1.len()..0x20].fill(0xcc);
+            data[0x20..0x20 + code2.len()].copy_from_slice(code2);
+            data[0x100..0x114].copy_from_slice(b"STRING_ONESTRING_TWO");
+
+            let image = Image {
+                path: std::path::PathBuf::from("pooled"),
+                data,
+                format: Format::Pe,
+                arch: Arch::X86_64,
+                bits: 64,
+                image_base: 0,
+                entry_va: TEXT_VA,
+                sections: vec![
+                    Section {
+                        name: ".text".into(),
+                        va: TEXT_VA,
+                        virtual_size: 0x100,
+                        file_offset: 0,
+                        file_size: 0x100,
+                        executable: true,
+                        writable: false,
+                        readable: true,
+                    },
+                    Section {
+                        name: ".rdata".into(),
+                        va: RDATA_VA,
+                        virtual_size: 0x100,
+                        file_offset: 0x100,
+                        file_size: 0x100,
+                        executable: false,
+                        writable: false,
+                        readable: true,
+                    },
+                ],
+                symbols: Vec::new(),
+                sha256: String::new(),
+            };
+            let signatures = SignatureSet::parse(
+                r#"
+version: 1
+rules:
+  - id: r.two
+    match:
+      strings: ["STRING_TWO"]
+    abi:
+      args: [{name: buf, kind: slice_mut}]
+    capture: {dump: [buf]}
+  - id: r.one
+    match:
+      strings: ["STRING_ONE"]
+    abi:
+      args: [{name: buf, kind: slice_mut}]
+    capture: {dump: [buf]}
+"#,
+            )
+            .unwrap();
+            let index = CodeIndex::build(&image);
+            let plan = build(&image, &signatures, &index, &PlanOptions::default());
+            assert_eq!(
+                plan.targets.len(),
+                2,
+                "each pooled literal should hit only its own caller: {:?}",
+                plan.targets
+            );
+            assert_eq!(plan.targets[0].rule_id, "r.one");
+            assert_eq!(plan.targets[0].rva, 0x1000);
+            assert_eq!(plan.targets[1].rule_id, "r.two");
+            assert_eq!(plan.targets[1].rva, 0x1020);
         }
     }
 
