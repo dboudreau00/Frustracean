@@ -4,18 +4,108 @@
 //! place before the unpacking stub executes. On attach it reads the hijack plan
 //! named by `FRUSTRACEAN_PLAN`, rebases every target onto the module's real load
 //! address, verifies that the bytes at each site still match what the planner
-//! saw, and writes a JSON Lines trace into `FRUSTRACEAN_OUT`.
-//!
-//! Build status, stated plainly: plan loading, rebasing, prologue verification,
-//! trampoline construction, buffer measurement, and trace writing are
-//! implemented and unit tested. The detour stub that fires on each hooked call
-//! is **not** - see [`detour`] for the design and what remains. Attaching today
-//! produces a trace that records exactly what was resolved and why nothing was
-//! hooked, which is honest and diagnosable, but it does not yet capture calls.
+//! saw, installs wrapped-call detours, and writes a JSON Lines trace plus
+//! content-addressed buffer dumps into `FRUSTRACEAN_OUT`.
 
 pub mod capture;
 pub mod detour;
 pub mod trampoline;
+
+#[cfg(windows)]
+pub(crate) mod probe {
+    use windows_sys::Win32::System::Memory::{
+        VirtualQuery, MEMORY_BASIC_INFORMATION, MEM_COMMIT, PAGE_EXECUTE, PAGE_EXECUTE_READ,
+        PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, PAGE_GUARD, PAGE_NOACCESS, PAGE_READONLY,
+        PAGE_READWRITE, PAGE_WRITECOPY,
+    };
+
+    fn is_readable_region(info: &MEMORY_BASIC_INFORMATION) -> bool {
+        if info.State != MEM_COMMIT {
+            return false;
+        }
+        if info.Protect & PAGE_GUARD != 0 || info.Protect & PAGE_NOACCESS != 0 {
+            return false;
+        }
+        let readable = PAGE_READONLY
+            | PAGE_READWRITE
+            | PAGE_WRITECOPY
+            | PAGE_EXECUTE
+            | PAGE_EXECUTE_READ
+            | PAGE_EXECUTE_READWRITE
+            | PAGE_EXECUTE_WRITECOPY;
+        info.Protect & readable != 0
+    }
+
+    /// Read up to `len` contiguous bytes at `addr`, checking every virtual
+    /// memory region spanned rather than trusting the target's pointer/length.
+    pub fn read_checked(addr: u64, len: usize) -> (Vec<u8>, Option<String>) {
+        if len == 0 {
+            return (Vec::new(), None);
+        }
+        if addr == 0 {
+            return (Vec::new(), Some("null buffer pointer".into()));
+        }
+
+        let mut out = Vec::new();
+        let mut cursor = addr;
+        while out.len() < len {
+            // SAFETY: `MEMORY_BASIC_INFORMATION` is a plain C struct that
+            // `VirtualQuery` fills in entirely.
+            let mut info: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
+            // SAFETY: `VirtualQuery` inspects virtual memory metadata without
+            // dereferencing `cursor`, and `info` has exact struct size.
+            let written = unsafe {
+                VirtualQuery(
+                    cursor as *const std::ffi::c_void,
+                    &mut info,
+                    std::mem::size_of::<MEMORY_BASIC_INFORMATION>(),
+                )
+            };
+            if written == 0 || !is_readable_region(&info) {
+                let msg = if out.is_empty() {
+                    format!("pointer {addr:#x} is not mapped or not readable")
+                } else {
+                    format!(
+                        "buffer unreadable past {cursor:#x} (read {} of {len} bytes)",
+                        out.len()
+                    )
+                };
+                return (out, Some(msg));
+            }
+            let region_end = (info.BaseAddress as u64).saturating_add(info.RegionSize as u64);
+            let avail = region_end.saturating_sub(cursor) as usize;
+            let take = (len - out.len()).min(avail);
+            if take == 0 {
+                let msg = format!(
+                    "zero-byte stride at {cursor:#x} (read {} of {len} bytes)",
+                    out.len()
+                );
+                return (out, Some(msg));
+            }
+            // SAFETY: `cursor .. cursor + take` lies entirely inside one
+            // committed, non-guard, non-noaccess readable region verified by
+            // `VirtualQuery` above, and we copy the bytes immediately.
+            let slice = unsafe { std::slice::from_raw_parts(cursor as *const u8, take) };
+            out.extend_from_slice(slice);
+            let Some(next) = cursor.checked_add(take as u64) else {
+                break;
+            };
+            cursor = next;
+        }
+        (out, None)
+    }
+
+    /// Read exact `len` contiguous bytes at `addr`, returning `None` unless the
+    /// full range is readable.
+    pub fn read_exact(addr: u64, len: usize) -> Option<Vec<u8>> {
+        let (bytes, err) = read_checked(addr, len);
+        if err.is_some() || bytes.len() != len {
+            None
+        } else {
+            Some(bytes)
+        }
+    }
+}
 
 #[cfg(windows)]
 mod attach {
@@ -31,68 +121,6 @@ mod attach {
     /// process. Kept in sync with `frustracean-cli/src/inject.rs`.
     const ENV_PLAN: &str = "FRUSTRACEAN_PLAN";
     const ENV_OUT: &str = "FRUSTRACEAN_OUT";
-
-    /// Read `len` bytes at `addr` in this process, first asking the memory
-    /// manager whether the range is committed and readable.
-    ///
-    /// Reading a hook site blind is a fault waiting to happen: a plan can name
-    /// an address that the loader never mapped, and in a packed sample a section
-    /// may not be committed until the stub gets to it.
-    fn read_probe(addr: u64, len: usize) -> Option<Vec<u8>> {
-        use windows_sys::Win32::System::Memory::{
-            VirtualQuery, MEMORY_BASIC_INFORMATION, MEM_COMMIT, PAGE_EXECUTE, PAGE_EXECUTE_READ,
-            PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, PAGE_GUARD, PAGE_NOACCESS,
-            PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY,
-        };
-
-        if len == 0 {
-            return Some(Vec::new());
-        }
-        // SAFETY: `MEMORY_BASIC_INFORMATION` is a plain C struct that
-        // `VirtualQuery` fills in entirely; zeroing is the documented way to
-        // initialise it before the call.
-        let mut info: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
-        // SAFETY: `VirtualQuery` only *inspects* the address - it does not
-        // dereference it - so an unmapped or wild `addr` is answered rather
-        // than faulted on. `info` is a live local of exactly the size passed.
-        let written = unsafe {
-            VirtualQuery(
-                addr as *const std::ffi::c_void,
-                &mut info,
-                std::mem::size_of::<MEMORY_BASIC_INFORMATION>(),
-            )
-        };
-        if written == 0 || info.State != MEM_COMMIT {
-            return None;
-        }
-        if info.Protect & PAGE_GUARD != 0 || info.Protect & PAGE_NOACCESS != 0 {
-            return None;
-        }
-        let readable = PAGE_READONLY
-            | PAGE_READWRITE
-            | PAGE_WRITECOPY
-            | PAGE_EXECUTE
-            | PAGE_EXECUTE_READ
-            | PAGE_EXECUTE_READWRITE
-            | PAGE_EXECUTE_WRITECOPY;
-        if info.Protect & readable == 0 {
-            return None;
-        }
-        // Do not read past the end of this region, which may be followed by an
-        // unmapped guard.
-        let region_end = info.BaseAddress as u64 + info.RegionSize as u64;
-        let avail = region_end.saturating_sub(addr) as usize;
-        let n = len.min(avail);
-        if n == 0 {
-            return None;
-        }
-        // SAFETY: every condition for a valid read has just been established by
-        // VirtualQuery - the range is committed, not a guard page, and carries
-        // a readable protection - and `n` is clamped to the end of that one
-        // region, so the slice cannot run into an unmapped neighbour. The bytes
-        // are copied out immediately, so no reference outlives the query.
-        Some(unsafe { std::slice::from_raw_parts(addr as *const u8, n) }.to_vec())
-    }
 
     fn module_base() -> u64 {
         use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -147,57 +175,24 @@ mod attach {
             ),
         );
 
-        match BlobStore::new(out_dir.join("blobs")) {
-            Ok(_store) => {}
+        let store = match BlobStore::new(out_dir.join("blobs")) {
+            Ok(store) => Some(store),
             Err(e) => {
                 sink.note(
                     NoteLevel::Warning,
                     format!("could not create the blob directory: {e}; buffers will not be dumped"),
                 );
+                None
             }
-        }
+        };
 
-        let (hooks, errors) = detour::resolve_all(&plan, base);
-        for e in &errors {
-            sink.note(NoteLevel::Warning, e.to_string());
+        if let Err(e) = detour::install_plan(&plan, base, &mut sink, store) {
+            sink.note(NoteLevel::Error, e);
         }
+    }
 
-        let mut verified = Vec::new();
-        for hook in hooks {
-            match read_probe(hook.address, hook.expected_bytes.len().max(1)) {
-                None => sink.note(
-                    NoteLevel::Warning,
-                    format!(
-                        "target {} at {:#x} is not mapped or not readable; skipping",
-                        hook.target_id, hook.address
-                    ),
-                ),
-                Some(actual) => {
-                    if detour::prologue_matches(&hook, &actual) {
-                        verified.push(hook);
-                    } else {
-                        sink.note(
-                            NoteLevel::Warning,
-                            format!(
-                                "target {} at {:#x} does not match the bytes the planner recorded; \
-                                 the plan is stale, or the sample has already rewritten this code",
-                                hook.target_id, hook.address
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-
-        sink.note(
-            NoteLevel::Info,
-            format!("{} target(s) verified against the plan", verified.len()),
-        );
-
-        match detour::install(&verified) {
-            Ok(n) => sink.note(NoteLevel::Info, format!("{n} hook(s) installed")),
-            Err(e) => sink.note(NoteLevel::Error, e),
-        }
+    pub fn detach() {
+        detour::finish_session();
     }
 }
 
@@ -209,10 +204,17 @@ pub extern "system" fn DllMain(
     reason: u32,
     _reserved: *mut std::ffi::c_void,
 ) -> i32 {
+    const DLL_PROCESS_DETACH: u32 = 0;
     const DLL_PROCESS_ATTACH: u32 = 1;
-    if reason == DLL_PROCESS_ATTACH {
-        // A panic must never unwind into the sample's loader.
-        let _ = std::panic::catch_unwind(attach::run);
+    match reason {
+        DLL_PROCESS_ATTACH => {
+            // A panic must never unwind into the sample's loader.
+            let _ = std::panic::catch_unwind(attach::run);
+        }
+        DLL_PROCESS_DETACH => {
+            let _ = std::panic::catch_unwind(attach::detach);
+        }
+        _ => {}
     }
     1
 }

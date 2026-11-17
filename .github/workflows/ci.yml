@@ -65,12 +65,11 @@ jobs:
       - name: Core without the analysis feature
         run: cargo check -p frustracean-core --no-default-features
 
-      - name: Payload as it is actually built
+      # Both the stub-only build and the default detour-enabled build must stay green.
+      - name: Payload without the detour feature
         run: cargo check -p frustracean-hook --no-default-features
 
-      # Hook installation is off by default because the detour stub is not
-      # implemented. It still has to compile.
-      - name: Payload with the detour feature
+      - name: Payload as it is built by default (detour)
         run: cargo check -p frustracean-hook --features detour
 
   msrv:

@@ -18,10 +18,8 @@ name = "frustracean_hook"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = []
-# Emit and install the detour stubs. Off by default: the stub is the one part of
-# the payload that has not been validated against a live target, and enabling it
-# means writing to another process's code. See src/detour.rs.
+default = ["detour"]
+# Emit and install the Win64 inline detour stubs.
 detour = []
 
 [dependencies]

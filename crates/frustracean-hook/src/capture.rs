@@ -124,7 +124,7 @@ pub fn describe_buffer(
 /// deliberately kills its own process mid-unpack is the normal case, and a
 /// buffered writer would lose exactly the records that mattered most.
 pub struct Sink {
-    file: std::fs::File,
+    file: Option<std::fs::File>,
     seq: u64,
     start: std::time::Instant,
     errors: usize,
@@ -137,11 +137,21 @@ impl Sink {
             std::fs::create_dir_all(parent)?;
         }
         Ok(Sink {
-            file: std::fs::File::create(path)?,
+            file: Some(std::fs::File::create(path)?),
             seq: 0,
             start: std::time::Instant::now(),
             errors: 0,
         })
+    }
+
+    /// An in-memory / discarding sink for bare hook installation without a trace file.
+    pub fn discard() -> Sink {
+        Sink {
+            file: None,
+            seq: 0,
+            start: std::time::Instant::now(),
+            errors: 0,
+        }
     }
 
     pub fn next_seq(&mut self) -> u64 {
@@ -154,11 +164,14 @@ impl Sink {
     }
 
     pub fn write(&mut self, record: &Record) {
+        let Some(file) = self.file.as_mut() else {
+            return;
+        };
         let Ok(line) = record.to_line() else {
             self.errors += 1;
             return;
         };
-        if writeln!(self.file, "{line}").is_err() || self.file.flush().is_err() {
+        if writeln!(file, "{line}").is_err() || file.flush().is_err() {
             self.errors += 1;
         }
     }
