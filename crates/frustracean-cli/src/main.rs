@@ -11,7 +11,7 @@ use clap::{Args, Parser, Subcommand};
 use frustracean_core::binary::Image;
 use frustracean_core::disasm::CodeIndex;
 use frustracean_core::entropy::{self, MapOptions};
-use frustracean_core::plan::{self, PlanOptions};
+use frustracean_core::plan::{self, HijackPlan, PlanOptions};
 use frustracean_core::report::{self, Expectations};
 use frustracean_core::rustid::{self, Verdict};
 use frustracean_core::signature::SignatureSet;
@@ -153,11 +153,18 @@ struct PlanArgs {
 
 #[derive(Args)]
 struct TraceArgs {
-    /// Hijack plan produced by `frustracean plan`.
-    plan: PathBuf,
+    /// Hijack plan produced by `frustracean plan`. When omitted, builds a plan
+    /// automatically into `<out>/plan.json`.
+    plan: Option<PathBuf>,
     /// The sample to execute.
     #[arg(long)]
     sample: PathBuf,
+    /// Directory of signature YAML files (used when planning automatically).
+    #[arg(long)]
+    signatures: Option<PathBuf>,
+    /// Do not attempt string cross-reference resolution when planning automatically.
+    #[arg(long)]
+    no_xrefs: bool,
     /// Directory for the trace and captured blobs.
     #[arg(long, default_value = "capture")]
     out: PathBuf,
@@ -167,6 +174,9 @@ struct TraceArgs {
     /// Kill the sample after this many seconds.
     #[arg(long, default_value_t = 60)]
     timeout: u64,
+    /// Correlate captured buffers immediately after tracing and print the report.
+    #[arg(long)]
+    replay: bool,
     /// Arguments passed through to the sample.
     #[arg(last = true)]
     sample_args: Vec<String>,
@@ -853,27 +863,27 @@ fn cmd_rules(o: &Out, a: RulesArgs) -> i32 {
 // plan
 // ---------------------------------------------------------------------------
 
-fn cmd_plan(o: &Out, a: PlanArgs) -> i32 {
-    let image = match load_image(o, &a.image) {
-        Ok(i) => i,
-        Err(c) => return c,
-    };
-    let (signatures, dir) = match load_signatures(o, a.signatures) {
-        Ok(v) => v,
-        Err(c) => return c,
-    };
+fn build_plan_for_sample(
+    o: &Out,
+    image_path: &Path,
+    signatures: Option<PathBuf>,
+    no_xrefs: bool,
+    include_unsafe: bool,
+) -> Result<(Image, CodeIndex, HijackPlan), i32> {
+    let image = load_image(o, image_path)?;
+    let (sig_set, dir) = load_signatures(o, signatures)?;
 
     if image.arch.decoder_bitness().is_none() {
         o.error(format!(
             "no disassembler for {} - planning needs x86 or x86-64",
             image.arch.label()
         ));
-        return exit::FAILED;
+        return Err(exit::FAILED);
     }
 
     o.info(format!(
         "loaded {} rule(s) from {}",
-        signatures.len(),
+        sig_set.len(),
         dir.display()
     ));
     o.info("indexing code (linear sweep of executable sections)");
@@ -892,11 +902,20 @@ fn cmd_plan(o: &Out, a: PlanArgs) -> i32 {
     }
 
     let opts = PlanOptions {
-        allow_string_xrefs: !a.no_xrefs,
-        include_unsafe: a.include_unsafe,
+        allow_string_xrefs: !no_xrefs,
+        include_unsafe,
         ..Default::default()
     };
-    let built = plan::build(&image, &signatures, &index, &opts);
+    let built = plan::build(&image, &sig_set, &index, &opts);
+    Ok((image, index, built))
+}
+
+fn cmd_plan(o: &Out, a: PlanArgs) -> i32 {
+    let (image, index, built) =
+        match build_plan_for_sample(o, &a.image, a.signatures, a.no_xrefs, a.include_unsafe) {
+            Ok(v) => v,
+            Err(c) => return c,
+        };
 
     if let Some(path) = &a.out {
         let json = match built.to_json() {
@@ -1001,32 +1020,37 @@ fn cmd_plan(o: &Out, a: PlanArgs) -> i32 {
 // ---------------------------------------------------------------------------
 
 fn cmd_trace(o: &Out, a: TraceArgs) -> i32 {
-    let text = match std::fs::read_to_string(&a.plan) {
-        Ok(t) => t,
-        Err(e) => {
-            o.error(format!("{}: {e}", a.plan.display()));
-            return exit::BAD_INPUT;
+    let preloaded = if let Some(plan_path) = &a.plan {
+        let text = match std::fs::read_to_string(plan_path) {
+            Ok(t) => t,
+            Err(e) => {
+                o.error(format!("{}: {e}", plan_path.display()));
+                return exit::BAD_INPUT;
+            }
+        };
+        let loaded = match HijackPlan::from_json(&text) {
+            Ok(p) => p,
+            Err(e) => {
+                o.error(format!("{}: {e}", plan_path.display()));
+                return exit::BAD_INPUT;
+            }
+        };
+        if loaded.targets.is_empty() {
+            o.error("the plan contains no targets");
+            return exit::USAGE;
         }
+        Some((plan_path.clone(), loaded))
+    } else {
+        None
     };
-    let loaded = match frustracean_core::plan::HijackPlan::from_json(&text) {
-        Ok(p) => p,
-        Err(e) => {
-            o.error(format!("{}: {e}", a.plan.display()));
-            return exit::BAD_INPUT;
-        }
-    };
-    if loaded.targets.is_empty() {
-        o.error("the plan contains no targets");
-        return exit::USAGE;
-    }
+
     if !a.sample.is_file() {
         o.error(format!("{}: not a file", a.sample.display()));
         return exit::BAD_INPUT;
     }
 
-    // The safety gate comes before the correctness gate: an analyst who is not
-    // on an isolated machine should be told that first, not after a hash
-    // mismatch sends them off to rebuild the plan.
+    // The safety gate comes before hash matching and auto-planning: an analyst
+    // who is not on an isolated machine must be told that first.
     if !a.sandboxed {
         o.error("refusing to execute the sample without --sandboxed");
         o.item("`trace` runs the sample so its own unpacking code produces the plaintext.");
@@ -1035,39 +1059,87 @@ fn cmd_trace(o: &Out, a: TraceArgs) -> i32 {
         return exit::USAGE;
     }
 
-    // The plan is bound to a specific image by hash. Running it against a
-    // different sample would hook whatever happens to sit at those offsets.
-    match std::fs::read(&a.sample) {
-        Ok(bytes) => {
-            let sha = frustracean_core::sha256_hex(&bytes);
-            if sha != loaded.image.sha256 {
-                o.error(format!(
-                    "the plan was built for SHA256 {} but --sample hashes to {sha}",
-                    loaded.image.sha256
-                ));
-                return exit::USAGE;
+    let (plan_path, loaded) = match preloaded {
+        Some((path, loaded)) => {
+            // The plan is bound to a specific image by hash. Running it against a
+            // different sample would hook whatever happens to sit at those offsets.
+            match std::fs::read(&a.sample) {
+                Ok(bytes) => {
+                    let sha = frustracean_core::sha256_hex(&bytes);
+                    if sha != loaded.image.sha256 {
+                        o.error(format!(
+                            "the plan was built for SHA256 {} but --sample hashes to {sha}",
+                            loaded.image.sha256
+                        ));
+                        return exit::USAGE;
+                    }
+                }
+                Err(e) => {
+                    o.error(format!("{}: {e}", a.sample.display()));
+                    return exit::BAD_INPUT;
+                }
             }
+            (path, loaded)
         }
-        Err(e) => {
-            o.error(format!("{}: {e}", a.sample.display()));
-            return exit::BAD_INPUT;
+        None => {
+            o.info("no plan specified; building one before launching");
+            let (_, _, built) =
+                match build_plan_for_sample(o, &a.sample, a.signatures, a.no_xrefs, false) {
+                    Ok(v) => v,
+                    Err(c) => return c,
+                };
+            if built.targets.is_empty() {
+                o.section("Result");
+                o.warn("no hijack targets were resolved for the sample");
+                o.item(
+                    "Run `frustracean deps` or inspect with `frustracean plan` before retrying.",
+                );
+                return exit::FAILED;
+            }
+            let auto_plan = a.out.join("plan.json");
+            let json = match built.to_json() {
+                Ok(j) => j,
+                Err(e) => {
+                    o.error(e.to_string());
+                    return exit::FAILED;
+                }
+            };
+            if let Err(c) = write_out(o, &auto_plan, &json) {
+                return c;
+            }
+            o.info(format!("plan written to {}", auto_plan.display()));
+            (auto_plan, built)
         }
-    }
+    };
 
-    o.field("Plan", a.plan.display());
+    o.field("Plan", plan_path.display());
     o.field("Sample", a.sample.display());
     o.field("Targets", loaded.targets.len());
     o.field("Output", a.out.display());
 
-    inject::run(
+    let trace_status = inject::run(
         o,
         &loaded,
-        &a.plan,
+        &plan_path,
         &a.sample,
         &a.out,
         a.payload.as_deref(),
         &a.sample_args,
         a.timeout,
+    );
+    if trace_status != exit::OK || !a.replay {
+        return trace_status;
+    }
+
+    o.section("Replay");
+    cmd_replay(
+        o,
+        ReplayArgs {
+            trace: a.out.join("trace.jsonl"),
+            plan: Some(plan_path),
+            out: Some(a.out.join("report.md")),
+            json: false,
+        },
     )
 }
 
@@ -1199,4 +1271,86 @@ fn cmd_replay(o: &Out, a: ReplayArgs) -> i32 {
         out::bytes(built.summary.bytes_recovered as u64)
     ));
     exit::OK
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trace_cli_parses_explicit_plan_and_passthrough_args() {
+        let cli = Cli::try_parse_from([
+            "frustracean",
+            "trace",
+            "plan.json",
+            "--sample",
+            "sample.exe",
+            "--sandboxed",
+            "--",
+            "--dump",
+            "out",
+        ])
+        .unwrap();
+        let Command::Trace(t) = cli.command else {
+            panic!("expected Trace subcommand");
+        };
+        assert_eq!(t.plan, Some(PathBuf::from("plan.json")));
+        assert_eq!(t.sample, PathBuf::from("sample.exe"));
+        assert!(t.sandboxed);
+        assert!(!t.replay);
+        assert_eq!(t.sample_args, vec!["--dump", "out"]);
+    }
+
+    #[test]
+    fn trace_cli_parses_oneshot_mode_without_plan() {
+        let cli = Cli::try_parse_from([
+            "frustracean",
+            "trace",
+            "--sample",
+            "sample.exe",
+            "--signatures",
+            "rules",
+            "--no-xrefs",
+            "--out",
+            "cap",
+            "--replay",
+            "--sandboxed",
+            "--",
+            "--flag",
+        ])
+        .unwrap();
+        let Command::Trace(t) = cli.command else {
+            panic!("expected Trace subcommand");
+        };
+        assert_eq!(t.plan, None);
+        assert_eq!(t.sample, PathBuf::from("sample.exe"));
+        assert_eq!(t.signatures, Some(PathBuf::from("rules")));
+        assert!(t.no_xrefs);
+        assert_eq!(t.out, PathBuf::from("cap"));
+        assert!(t.replay);
+        assert!(t.sandboxed);
+        assert_eq!(t.sample_args, vec!["--flag"]);
+    }
+
+    #[test]
+    fn trace_refuses_unsandboxed_oneshot_execution() {
+        let sample = std::env::current_exe().unwrap();
+        let o = Out::new(true);
+        let code = cmd_trace(
+            &o,
+            TraceArgs {
+                plan: None,
+                sample,
+                signatures: None,
+                no_xrefs: false,
+                out: PathBuf::from("capture"),
+                payload: None,
+                timeout: 5,
+                replay: false,
+                sample_args: Vec::new(),
+                sandboxed: false,
+            },
+        );
+        assert_eq!(code, exit::USAGE);
+    }
 }

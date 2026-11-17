@@ -160,8 +160,8 @@ mod win {
         VirtualAllocEx, VirtualFreeEx, MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_READWRITE,
     };
     use windows_sys::Win32::System::Threading::{
-        CreateProcessW, CreateRemoteThread, GetExitCodeProcess, ResumeThread, TerminateProcess,
-        WaitForSingleObject, CREATE_SUSPENDED, PROCESS_INFORMATION, STARTUPINFOW,
+        CreateProcessW, CreateRemoteThread, GetExitCodeProcess, GetExitCodeThread, ResumeThread,
+        TerminateProcess, WaitForSingleObject, CREATE_SUSPENDED, PROCESS_INFORMATION, STARTUPINFOW,
     };
 
     pub type Handle = *mut c_void;
@@ -325,12 +325,13 @@ mod win {
         }
 
         /// Run `start(argument)` on a new thread in the child and wait for it.
+        /// Returns the remote thread's exit code on completion.
         pub fn run_remote(
             &self,
             start: StartRoutine,
             argument: *mut c_void,
             timeout_ms: u32,
-        ) -> Result<(), String> {
+        ) -> Result<u32, String> {
             // SAFETY: `self.process` is live. `start` is the address of
             // `LoadLibraryW`, valid in the child for the reason documented on
             // `load_library_w`. `argument` points at memory allocated in the
@@ -354,6 +355,13 @@ mod win {
             }
             // SAFETY: `thread` is a live handle from the call above.
             let waited = unsafe { WaitForSingleObject(thread, timeout_ms) };
+            let mut exit_code = 0u32;
+            let got_exit = if waited == WAIT_OBJECT_0 {
+                // SAFETY: `thread` finished and is still live until `CloseHandle` below.
+                unsafe { GetExitCodeThread(thread, &mut exit_code) != 0 }
+            } else {
+                false
+            };
             // SAFETY: same handle, not yet closed, and not used afterwards.
             unsafe { CloseHandle(thread) };
             if waited != WAIT_OBJECT_0 {
@@ -362,7 +370,13 @@ mod win {
                     timeout_ms / 1000
                 ));
             }
-            Ok(())
+            if !got_exit {
+                return Err(format!(
+                    "GetExitCodeThread failed after remote thread exited with error {}",
+                    last_error()
+                ));
+            }
+            Ok(exit_code)
         }
 
         /// Release the initial thread so the sample starts executing.
@@ -449,17 +463,49 @@ pub fn run(
         .canonicalize()
         .unwrap_or_else(|_| payload_path.clone());
 
+    struct EnvGuard {
+        prev_plan: Option<std::ffi::OsString>,
+        prev_out: Option<std::ffi::OsString>,
+    }
+
+    impl EnvGuard {
+        fn set(plan: &Path, out: &Path) -> Self {
+            let prev_plan = std::env::var_os(ENV_PLAN);
+            let prev_out = std::env::var_os(ENV_OUT);
+            std::env::set_var(ENV_PLAN, plan);
+            std::env::set_var(ENV_OUT, out);
+            EnvGuard {
+                prev_plan,
+                prev_out,
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.prev_plan {
+                Some(v) => std::env::set_var(ENV_PLAN, v),
+                None => std::env::remove_var(ENV_PLAN),
+            }
+            match &self.prev_out {
+                Some(v) => std::env::set_var(ENV_OUT, v),
+                None => std::env::remove_var(ENV_OUT),
+            }
+        }
+    }
+
     // The child inherits our environment, so this is how the payload is told
-    // what to do. Set before spawning.
-    std::env::set_var(ENV_PLAN, &plan_abs);
-    std::env::set_var(ENV_OUT, &out_abs);
+    // what to do. Set before spawning and restored right after spawn.
+    let env_guard = EnvGuard::set(&plan_abs, &out_abs);
 
     o.info(format!("payload: {}", payload_abs.display()));
     o.info("creating the process suspended so hooks land before the entry point runs");
     o.info("note: the sample's TLS callbacks run during payload load, ahead of the first hook");
 
     let command_line = build_command_line(sample, sample_args);
-    let child = match win::Child::spawn_suspended(sample, &command_line) {
+    let child = win::Child::spawn_suspended(sample, &command_line);
+    drop(env_guard);
+    let child = match child {
         Ok(c) => c,
         Err(code) => {
             o.error(format!("CreateProcessW failed with error {code}"));
@@ -503,8 +549,20 @@ pub fn run(
         child.terminate();
         return exit::FAILED;
     };
-    if let Err(e) = child.run_remote(load_library, remote.address(), ATTACH_TIMEOUT_MS) {
-        o.error(e);
+    let remote_exit = match child.run_remote(load_library, remote.address(), ATTACH_TIMEOUT_MS) {
+        Ok(code) => code,
+        Err(e) => {
+            o.error(e);
+            child.terminate();
+            return exit::FAILED;
+        }
+    };
+    let trace_path = out_abs.join("trace.jsonl");
+    if remote_exit == 0 && !trace_path.is_file() {
+        o.error(format!(
+            "remote LoadLibraryW failed to load {} (exit code 0); check DLL bitness and dependencies",
+            payload_abs.display()
+        ));
         child.terminate();
         return exit::FAILED;
     }
@@ -522,7 +580,6 @@ pub fn run(
         child.terminate();
     }
 
-    let trace_path = out_abs.join("trace.jsonl");
     if !trace_path.is_file() {
         o.error(format!(
             "no trace was produced at {}; the payload may not have attached",
@@ -530,6 +587,38 @@ pub fn run(
         ));
         return exit::FAILED;
     }
+
+    if let Ok(trace_text) = std::fs::read_to_string(&trace_path) {
+        let (records, _) = frustracean_core::trace::parse_lines(&trace_text);
+        let mut events = 0usize;
+        let mut error_notes = Vec::new();
+        for rec in &records {
+            match rec {
+                frustracean_core::trace::Record::Event(_) => events += 1,
+                frustracean_core::trace::Record::Note(n) => {
+                    if n.level == frustracean_core::trace::NoteLevel::Error {
+                        error_notes.push(n.message.clone());
+                    }
+                }
+            }
+        }
+        if !error_notes.is_empty() && events == 0 {
+            for msg in &error_notes {
+                o.error(msg);
+            }
+            o.error(format!(
+                "payload reported {} error(s) and captured 0 events ({})",
+                error_notes.len(),
+                trace_path.display()
+            ));
+            return exit::FAILED;
+        }
+        o.field("Trace events", events);
+        if events == 0 {
+            o.warn("0 hijacked calls captured; targets may not have executed before sample exit");
+        }
+    }
+
     o.section("Summary");
     o.ok(format!("trace written to {}", trace_path.display()));
     o.item(format!(
