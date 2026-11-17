@@ -24,7 +24,7 @@ serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 
-goblin = { version = "0.9", optional = true }
+goblin = { version = "0.10", optional = true }
 iced-x86 = { version = "1.21", optional = true }
 regex = { version = "1", optional = true }
 serde_yaml = { version = "0.9", optional = true }
